@@ -1,6 +1,6 @@
 {
   "name": "@subiz/ajax",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -11,8 +11,8 @@
     "type": "git",
     "url": "git+ssh://git@bitbucket.org/subiz/ajax.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Pham Kieu Thanh",
+  "license": "MIT",
   "homepage": "https://bitbucket.org/subiz/ajax#readme",
   "devDependencies": {
     "babel-cli": "^6.26.0",
