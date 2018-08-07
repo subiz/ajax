@@ -15,11 +15,12 @@ const dashreq = new ajax.Request()
   .setBase("https://app.subiz.net/v4/")
   .setMethod("GET")
 
+// send get request to https://app.subiz.net/v4/ping
 let [code,body, err] = await dashreq.setPath("ping").send()
 // [200, '{"message":"pong from dashboard backend"}', undefined]
 
 // tell Ajax to parse json for us
-[code, body, err] = await dashreq.setPath("ping").setParse("json").send()
+[code, body, err] = await dashreq.setPath("ping").setParser("json").send()
 // [200, {message: "ping from dashboard backend"}, undefined
 
 ```
@@ -36,7 +37,7 @@ const apireq = new ajax.Request()
     } catch (e) {}
 
     if (!err) return true
-    if (err.code !== 'invalid_access_token' && err.code !== 'invalid_credential') return true
+    if (err.code !== 'invalid_access_token' || err.code !== 'invalid_credential') return true
 
     if (refreshing_state === 'normal') {
       refreshing_state = 'refreshing'
@@ -54,7 +55,8 @@ const apireq = new ajax.Request()
     } else if (refreshing_state == 'dead') {
       return true
     } else {
-      for (; refreshing;) await sleep(200)
+      for (; refreshing_state != 'refreshing';) await sleep(200)
+      if (refreshing_state == 'dead') return true
     }
 
     // resent
@@ -67,6 +69,6 @@ const apireq = new ajax.Request()
     return true
 })
 
-let [code, body, err] = apireq.setPath("me")
+let [code, body, err] = await apireq.setPath("me").send()
 
 ```
