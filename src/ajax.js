@@ -77,7 +77,6 @@ class Request {
 	async send(data) {
 		let req = this.clone()
 		if (data) {
-
 			if (this.method == 'post') {
 				if (this.content_type == 'json') {
 					req.body = JSON.stringify(data)
@@ -87,9 +86,7 @@ class Request {
 					req.body = data
 				}
 			} else {
-				if (data) {
-					req.url += '?' + serializeQuery(data)
-				}
+				req.url += '?' + serializeQuery(data)
 			}
 		}
 		return dosend(req)
@@ -117,9 +114,8 @@ const dosend = async (req) => {
 		})
 	}
 	let resp
-	console.log("url", req.url, req.headers)
 	try {
-		resp = await env.fetch(req.url, req)
+		resp = await env.fetch.bind(window)(req.url, req)
 	} catch (e) {
 		return [0, undefined, e]
 	}
@@ -189,18 +185,14 @@ module.exports = {
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-
 const stringifyPrimitive = v => {
 	switch (typeof v) {
 		case 'string':
 			return v;
-
 		case 'boolean':
 			return v ? 'true' : 'false';
-
 		case 'number':
 			return isFinite(v) ? v : '';
-
 		default:
 			return '';
 	}
