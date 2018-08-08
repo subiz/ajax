@@ -1,5 +1,11 @@
 # @subiz/ajax
-simple, tiny, zero-dep, immutatble fetch wraper
+* *exception-free*
+* simple
+* tiny
+* zero dependencies
+* *immutatble*
+
+fetch api wrapper
 
 # Work in progress
 0. docs
@@ -37,7 +43,8 @@ const apireq = new ajax.Request()
     } catch (e) {}
 
     if (!err) return true
-    if (err.code !== 'invalid_access_token' || err.code !== 'invalid_credential') return true
+    if (err.code !== 'invalid_access_token' &&
+	  err.code !== 'invalid_credential') return true
 
     if (refreshing_state === 'normal') {
       refreshing_state = 'refreshing'
@@ -64,7 +71,7 @@ const apireq = new ajax.Request()
 
     if (err1) return true
     param.code = code
-    param.body = body
+    param.body = JSON.stringify(body)
 
     return true
 })
