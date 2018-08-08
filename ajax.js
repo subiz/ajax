@@ -101,7 +101,6 @@ var Request = function () {
 		value: async function send(data) {
 			var req = this.clone();
 			if (data) {
-
 				if (this.method == 'post') {
 					if (this.content_type == 'json') {
 						req.body = JSON.stringify(data);
@@ -111,9 +110,7 @@ var Request = function () {
 						req.body = data;
 					}
 				} else {
-					if (data) {
-						req.url += '?' + serializeQuery(data);
-					}
+					req.url += '?' + serializeQuery(data);
 				}
 			}
 			return dosend(req);
@@ -144,9 +141,8 @@ var dosend = async function dosend(req) {
 		});
 	}
 	var resp = void 0;
-	console.log("url", req.url, req.headers);
 	try {
-		resp = await env.fetch(req.url, req);
+		resp = await env.fetch.bind(env.window)(req.url, req);
 	} catch (e) {
 		return [0, undefined, e];
 	}
@@ -208,7 +204,8 @@ var getRealType = function getRealType(type) {
 };
 
 var env = {
-	fetch: {}
+	fetch: {},
+	window: {}
 };
 module.exports = {
 	Request: Request,
@@ -240,13 +237,10 @@ module.exports = {
 	switch (typeof v === 'undefined' ? 'undefined' : _typeof(v)) {
 		case 'string':
 			return v;
-
 		case 'boolean':
 			return v ? 'true' : 'false';
-
 		case 'number':
 			return isFinite(v) ? v : '';
-
 		default:
 			return '';
 	}
