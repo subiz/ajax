@@ -141,18 +141,18 @@ var dosend = async function dosend(req) {
 		});
 	}
 	var resp = void 0;
+	req.credentials = "same-origin";
 	try {
 		resp = await env.fetch.bind(env.window)(req.url, req);
 	} catch (e) {
 		return [0, undefined, e];
 	}
 
-	var txt = await resp.text();
-
+	var body = await resp.text();
 	var param = {
 		req: req,
 		code: resp.status,
-		body: txt
+		body: body
 	};
 	var _iteratorNormalCompletion = true;
 	var _didIteratorError = false;
@@ -179,13 +179,14 @@ var dosend = async function dosend(req) {
 		}
 	}
 
+	body = param.body;
 	var err = void 0;
 	try {
-		txt = req.parse(txt);
+		body = req.parse(body);
 	} catch (e) {
 		err = e;
 	}
-	return [param.code, txt, err];
+	return [param.code, body, err];
 };
 
 var norm = function norm(str) {
