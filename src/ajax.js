@@ -115,7 +115,7 @@ const dosend = async (req) => {
 	}
 	let resp
 	try {
-		resp = await env.fetch.bind(window)(req.url, req)
+		resp = await env.fetch.bind(env.window)(req.url, req)
 	} catch (e) {
 		return [0, undefined, e]
 	}
@@ -155,11 +155,12 @@ const getRealType = type => {
 
 
 var env = {
-	fetch: {}
+	fetch: {},
+	window: {},
 }
 module.exports = {
 	Request,
-	env
+	env,
 }
 
 
