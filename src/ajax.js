@@ -1,5 +1,3 @@
-'use strict';
-
 class Request {
 	constructor() {
 		this.parse = _ => _
@@ -106,41 +104,41 @@ const makeUrl = req => {
 	req.url = req.base + req.path
 }
 
-const dosend = async (req) => {
+const dosend = async req => {
 	req.content_type = getRealType(req.content_type)
 	if (req.content_type) {
 		req.headers = Object.assign(req.headers || {}, {
-			'Content-Type': req.content_type
+			'Content-Type': req.content_type,
 		})
 	}
 	let resp
+	req.credentials = "same-origin"
 	try {
 		resp = await env.fetch.bind(env.window)(req.url, req)
 	} catch (e) {
 		return [0, undefined, e]
 	}
 
-	let txt = await resp.text()
-
+	let body = await resp.text()
 	let param = {
 		req,
 		code: resp.status,
-		body: txt
+		body,
 	}
-	for (let f of req.hooks) {
+	for (let f of req.hooks)
 		if (!await f(param)) break
-	}
 
+	body = param.body
 	let err;
 	try {
-		txt = req.parse(txt)
+		body = req.parse(body)
 	} catch (e) {
 		err = e
 	}
-	return [param.code, txt, err]
+	return [param.code, body, err]
 }
 
-const norm = (str) => (str || "").toLowerCase().trim()
+const norm = str => (str || "").toLowerCase().trim()
 
 const getRealType = type => {
 	type = norm(type)
@@ -152,7 +150,6 @@ const getRealType = type => {
 	}
 	return type
 }
-
 
 var env = {
 	fetch: {},
