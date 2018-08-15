@@ -5,6 +5,7 @@ class Request {
 		this.base = ''
 		this.path = ''
 		this.credentials = 'same-origin'
+		this.query = ''
 	}
 
 	clone() {
@@ -19,6 +20,14 @@ class Request {
 		req.hooks = this.hooks.slice()
 		req.body = this.body
 		req.credentials = this.credentails
+		req.query = this.query
+		return req
+	}
+
+	setQuery(query) {
+		if (!query) return this
+		let req = this.clone()
+		req.query = "?" + serializeQuery(query)
 		return req
 	}
 
@@ -83,18 +92,15 @@ class Request {
 	async send(data) {
 		let req = this.clone()
 		if (data) {
-			if (this.method == 'post') {
-				if (this.content_type == 'json') {
-					req.body = JSON.stringify(data)
-				} else if (this.content_type == 'form') {
-					req.body = stringify(data)
-				} else {
-					req.body = data
-				}
+			if (this.content_type == 'json') {
+				req.body = JSON.stringify(data)
+			} else if (this.content_type == 'form') {
+				req.body = stringify(data)
 			} else {
-				req.url += '?' + serializeQuery(data)
+				req.body = data
 			}
 		}
+		req.url += req.query
 		return dosend(req)
 	}
 }
@@ -145,7 +151,7 @@ const dosend = async req => {
 	return [param.code, body, err]
 }
 
-const norm = str => (str || "").toLowerCase().trim()
+const norm = str => (str || "").trim()
 
 const getRealType = type => {
 	type = norm(type)
@@ -166,7 +172,6 @@ module.exports = {
 	Request,
 	env,
 }
-
 
 // Copyright Joyent, Inc. and other Node contributors.
 //
