@@ -4,6 +4,7 @@ class Request {
 		this.hooks = []
 		this.base = ''
 		this.path = ''
+		this.credentials = 'same-origin'
 	}
 
 	clone() {
@@ -17,6 +18,13 @@ class Request {
 		req.content_type = this.content_type
 		req.hooks = this.hooks.slice()
 		req.body = this.body
+		req.credentials = this.credentails
+		return req
+	}
+
+	setCredentials(cred) {
+		let req = this.clone()
+		req.credentials = cred
 		return req
 	}
 
@@ -112,7 +120,6 @@ const dosend = async req => {
 		})
 	}
 	let resp
-	req.credentials = "same-origin"
 	try {
 		resp = await env.fetch.bind(env.window)(req.url, req)
 	} catch (e) {
