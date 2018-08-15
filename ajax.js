@@ -16,6 +16,7 @@ var Request = function () {
 		this.hooks = [];
 		this.base = '';
 		this.path = '';
+		this.credentials = 'same-origin';
 	}
 
 	_createClass(Request, [{
@@ -31,6 +32,14 @@ var Request = function () {
 			req.content_type = this.content_type;
 			req.hooks = this.hooks.slice();
 			req.body = this.body;
+			req.credentials = this.credentails;
+			return req;
+		}
+	}, {
+		key: 'setCredentials',
+		value: function setCredentials(cred) {
+			var req = this.clone();
+			req.credentials = cred;
 			return req;
 		}
 	}, {
@@ -141,7 +150,6 @@ var dosend = async function dosend(req) {
 		});
 	}
 	var resp = void 0;
-	req.credentials = "same-origin";
 	try {
 		resp = await env.fetch.bind(env.window)(req.url, req);
 	} catch (e) {
