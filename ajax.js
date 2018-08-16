@@ -1,16 +1,46 @@
 'use strict';
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+var _keys = require('babel-runtime/core-js/object/keys');
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+var _keys2 = _interopRequireDefault(_keys);
 
-function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
+var _typeof2 = require('babel-runtime/helpers/typeof');
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+var _typeof3 = _interopRequireDefault(_typeof2);
+
+var _regenerator = require('babel-runtime/regenerator');
+
+var _regenerator2 = _interopRequireDefault(_regenerator);
+
+var _getIterator2 = require('babel-runtime/core-js/get-iterator');
+
+var _getIterator3 = _interopRequireDefault(_getIterator2);
+
+var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
+
+var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
+
+var _stringify = require('babel-runtime/core-js/json/stringify');
+
+var _stringify2 = _interopRequireDefault(_stringify);
+
+var _assign = require('babel-runtime/core-js/object/assign');
+
+var _assign2 = _interopRequireDefault(_assign);
+
+var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
+
+var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
+
+var _createClass2 = require('babel-runtime/helpers/createClass');
+
+var _createClass3 = _interopRequireDefault(_createClass2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var Request = function () {
 	function Request() {
-		_classCallCheck(this, Request);
+		(0, _classCallCheck3.default)(this, Request);
 
 		this.parse = function (_) {
 			return _;
@@ -22,7 +52,7 @@ var Request = function () {
 		this.query = '';
 	}
 
-	_createClass(Request, [{
+	(0, _createClass3.default)(Request, [{
 		key: 'clone',
 		value: function clone() {
 			var req = new Request();
@@ -73,7 +103,7 @@ var Request = function () {
 		key: 'setHeader',
 		value: function setHeader(headers) {
 			var req = this.clone();
-			req.headers = Object.assign({}, this.headers, headers);
+			req.headers = (0, _assign2.default)({}, this.headers, headers);
 			req.headers['Content-Type'] = undefined;
 			return req;
 		}
@@ -123,7 +153,7 @@ var Request = function () {
 			var req = this.clone();
 			if (data) {
 				if (this.content_type == 'json') {
-					req.body = JSON.stringify(data);
+					req.body = (0, _stringify2.default)(data);
 				} else if (this.content_type == 'form') {
 					req.body = stringify(data);
 				} else {
@@ -134,7 +164,6 @@ var Request = function () {
 			return dosend(req);
 		}
 	}]);
-
 	return Request;
 }();
 
@@ -152,16 +181,16 @@ var makeUrl = function makeUrl(req) {
 };
 
 var dosend = function () {
-	var _ref = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(req) {
+	var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee(req) {
 		var resp, body, param, _iteratorNormalCompletion, _didIteratorError, _iteratorError, _iterator, _step, f, err;
 
-		return regeneratorRuntime.wrap(function _callee$(_context) {
+		return _regenerator2.default.wrap(function _callee$(_context) {
 			while (1) {
 				switch (_context.prev = _context.next) {
 					case 0:
 						req.content_type = getRealType(req.content_type);
 						if (req.content_type) {
-							req.headers = Object.assign(req.headers || {}, {
+							req.headers = (0, _assign2.default)(req.headers || {}, {
 								'Content-Type': req.content_type
 							});
 						}
@@ -195,7 +224,7 @@ var dosend = function () {
 						_didIteratorError = false;
 						_iteratorError = undefined;
 						_context.prev = 19;
-						_iterator = req.hooks[Symbol.iterator]();
+						_iterator = (0, _getIterator3.default)(req.hooks);
 
 					case 21:
 						if (_iteratorNormalCompletion = (_step = _iterator.next()).done) {
@@ -325,7 +354,7 @@ module.exports = {
 
 
 };var stringifyPrimitive = function stringifyPrimitive(v) {
-	switch (typeof v === 'undefined' ? 'undefined' : _typeof(v)) {
+	switch (typeof v === 'undefined' ? 'undefined' : (0, _typeof3.default)(v)) {
 		case 'string':
 			return v;
 		case 'boolean':
@@ -344,8 +373,8 @@ var stringify = function stringify(obj, sep, eq, name) {
 		obj = undefined;
 	}
 
-	if ((typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) === 'object') {
-		return Object.keys(obj).map(function (k) {
+	if ((typeof obj === 'undefined' ? 'undefined' : (0, _typeof3.default)(obj)) === 'object') {
+		return (0, _keys2.default)(obj).map(function (k) {
 			var ks = encodeURIComponent(stringifyPrimitive(k)) + eq;
 			if (Array.isArray(obj[k])) {
 				return obj[k].map(function (v) {
