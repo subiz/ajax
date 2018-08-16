@@ -1,18 +1,8 @@
-'use strict';
+function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var Request = function () {
-	function Request() {
-		_classCallCheck(this, Request);
-
-		this.parse = function (_) {
-			return _;
-		};
+class Request {
+	constructor() {
+		this.parse = _ => _;
 		this.hooks = [];
 		this.base = '';
 		this.path = '';
@@ -20,109 +10,96 @@ var Request = function () {
 		this.query = '';
 	}
 
-	_createClass(Request, [{
-		key: 'clone',
-		value: function clone() {
-			var req = new Request();
-			req.method = this.method;
-			req.url = this.url;
-			req.base = this.base;
-			req.data = this.data;
-			req.headers = this.headers;
-			req.parse = this.parse;
-			req.content_type = this.content_type;
-			req.hooks = this.hooks.slice();
-			req.body = this.body;
-			req.credentials = this.credentails;
-			req.query = this.query;
-			return req;
+	clone() {
+		let req = new Request();
+		req.method = this.method;
+		req.url = this.url;
+		req.base = this.base;
+		req.data = this.data;
+		req.headers = this.headers;
+		req.parse = this.parse;
+		req.content_type = this.content_type;
+		req.hooks = this.hooks.slice();
+		req.body = this.body;
+		req.credentials = this.credentails;
+		req.query = this.query;
+		return req;
+	}
+
+	setQuery(query) {
+		if (!query) return this;
+		let req = this.clone();
+		req.query = "?" + serializeQuery(query);
+		return req;
+	}
+
+	setCredentials(cred) {
+		let req = this.clone();
+		req.credentials = cred;
+		return req;
+	}
+
+	injectHook(f) {
+		let req = this.clone();
+		req.hooks.push(f);
+		return req;
+	}
+
+	setPath(newpath) {
+		let req = this.clone();
+		req.path = newpath;
+		makeUrl(req);
+		return req;
+	}
+
+	setHeader(headers) {
+		let req = this.clone();
+		req.headers = Object.assign({}, this.headers, headers);
+		req.headers['Content-Type'] = undefined;
+		return req;
+	}
+
+	setMethod(method) {
+		let req = this.clone();
+		req.method = norm(method);
+		return req;
+	}
+
+	setBase(base) {
+		let req = this.clone();
+		req.base = norm(base);
+		makeUrl(req);
+		return req;
+	}
+
+	setContentType(ty) {
+		let req = this.clone();
+		req.content_type = norm(ty);
+		return req;
+	}
+
+	setParser(parser) {
+		let req = this.clone();
+		switch (norm(parser)) {
+			case 'json':
+				req.parse = _ => JSON.parse(_);
+				break;
+			default:
+				req.parse = _ => _;
+				break;
 		}
-	}, {
-		key: 'setQuery',
-		value: function setQuery(query) {
-			if (!query) return this;
-			var req = this.clone();
-			req.query = "?" + serializeQuery(query);
-			return req;
-		}
-	}, {
-		key: 'setCredentials',
-		value: function setCredentials(cred) {
-			var req = this.clone();
-			req.credentials = cred;
-			return req;
-		}
-	}, {
-		key: 'injectHook',
-		value: function injectHook(f) {
-			var req = this.clone();
-			req.hooks.push(f);
-			return req;
-		}
-	}, {
-		key: 'setPath',
-		value: function setPath(newpath) {
-			var req = this.clone();
-			req.path = newpath;
-			makeUrl(req);
-			return req;
-		}
-	}, {
-		key: 'setHeader',
-		value: function setHeader(headers) {
-			var req = this.clone();
-			req.headers = Object.assign({}, this.headers, headers);
-			req.headers['Content-Type'] = undefined;
-			return req;
-		}
-	}, {
-		key: 'setMethod',
-		value: function setMethod(method) {
-			var req = this.clone();
-			req.method = norm(method);
-			return req;
-		}
-	}, {
-		key: 'setBase',
-		value: function setBase(base) {
-			var req = this.clone();
-			req.base = norm(base);
-			makeUrl(req);
-			return req;
-		}
-	}, {
-		key: 'setContentType',
-		value: function setContentType(ty) {
-			var req = this.clone();
-			req.content_type = norm(ty);
-			return req;
-		}
-	}, {
-		key: 'setParser',
-		value: function setParser(parser) {
-			var req = this.clone();
-			switch (norm(parser)) {
-				case 'json':
-					req.parse = function (_) {
-						return JSON.parse(_);
-					};
-					break;
-				default:
-					req.parse = function (_) {
-						return _;
-					};
-					break;
-			}
-			return req;
-		}
-	}, {
-		key: 'send',
-		value: async function send(data) {
-			var req = this.clone();
+		return req;
+	}
+
+	send(data) {
+		var _this = this;
+
+		return _asyncToGenerator(function* () {
+			let req = _this.clone();
 			if (data) {
-				if (this.content_type == 'json') {
+				if (_this.content_type == 'json') {
 					req.body = JSON.stringify(data);
-				} else if (this.content_type == 'form') {
+				} else if (_this.content_type == 'form') {
 					req.body = stringify(data);
 				} else {
 					req.body = data;
@@ -130,85 +107,63 @@ var Request = function () {
 			}
 			req.url += req.query;
 			return dosend(req);
-		}
-	}]);
+		})();
+	}
+}
 
-	return Request;
-}();
-
-var serializeQuery = function serializeQuery(obj) {
+const serializeQuery = obj => {
 	var str = [];
-	for (var p in obj) {
-		if (obj.hasOwnProperty(p)) {
-			str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
-		}
-	}return str.join("&");
+	for (var p in obj) if (obj.hasOwnProperty(p)) {
+		str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+	}
+	return str.join("&");
 };
 
-var makeUrl = function makeUrl(req) {
+const makeUrl = req => {
 	req.url = req.base + req.path;
 };
 
-var dosend = async function dosend(req) {
-	req.content_type = getRealType(req.content_type);
-	if (req.content_type) {
-		req.headers = Object.assign(req.headers || {}, {
-			'Content-Type': req.content_type
-		});
-	}
-	var resp = void 0;
-	try {
-		resp = await env.fetch.bind(env.window)(req.url, req);
-	} catch (e) {
-		return [0, undefined, e];
-	}
-
-	var body = await resp.text();
-	var param = {
-		req: req,
-		code: resp.status,
-		body: body
-	};
-	var _iteratorNormalCompletion = true;
-	var _didIteratorError = false;
-	var _iteratorError = undefined;
-
-	try {
-		for (var _iterator = req.hooks[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-			var f = _step.value;
-
-			if (!(await f(param))) break;
+const dosend = (() => {
+	var _ref = _asyncToGenerator(function* (req) {
+		req.content_type = getRealType(req.content_type);
+		if (req.content_type) {
+			req.headers = Object.assign(req.headers || {}, {
+				'Content-Type': req.content_type
+			});
 		}
-	} catch (err) {
-		_didIteratorError = true;
-		_iteratorError = err;
-	} finally {
+		let resp;
 		try {
-			if (!_iteratorNormalCompletion && _iterator.return) {
-				_iterator.return();
-			}
-		} finally {
-			if (_didIteratorError) {
-				throw _iteratorError;
-			}
+			resp = yield env.fetch.bind(env.window)(req.url, req);
+		} catch (e) {
+			return [0, undefined, e];
 		}
-	}
 
-	body = param.body;
-	var err = void 0;
-	try {
-		body = req.parse(body);
-	} catch (e) {
-		err = e;
-	}
-	return [param.code, body, err];
-};
+		let body = yield resp.text();
+		let param = {
+			req,
+			code: resp.status,
+			body
+		};
+		for (let f of req.hooks) if (!(yield f(param))) break;
 
-var norm = function norm(str) {
-	return (str || "").trim();
-};
+		body = param.body;
+		let err;
+		try {
+			body = req.parse(body);
+		} catch (e) {
+			err = e;
+		}
+		return [param.code, body, err];
+	});
 
-var getRealType = function getRealType(type) {
+	return function dosend(_x) {
+		return _ref.apply(this, arguments);
+	};
+})();
+
+const norm = str => (str || "").trim();
+
+const getRealType = type => {
 	type = norm(type);
 	switch (type) {
 		case 'json':
@@ -224,8 +179,8 @@ var env = {
 	window: {}
 };
 module.exports = {
-	Request: Request,
-	env: env
+	Request,
+	env
 
 	// Copyright Joyent, Inc. and other Node contributors.
 	//
@@ -249,8 +204,8 @@ module.exports = {
 	// USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-};var stringifyPrimitive = function stringifyPrimitive(v) {
-	switch (typeof v === 'undefined' ? 'undefined' : _typeof(v)) {
+};const stringifyPrimitive = v => {
+	switch (typeof v) {
 		case 'string':
 			return v;
 		case 'boolean':
@@ -262,14 +217,14 @@ module.exports = {
 	}
 };
 
-var stringify = function stringify(obj, sep, eq, name) {
+const stringify = (obj, sep, eq, name) => {
 	sep = sep || '&';
 	eq = eq || '=';
 	if (obj === null) {
 		obj = undefined;
 	}
 
-	if ((typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) === 'object') {
+	if (typeof obj === 'object') {
 		return Object.keys(obj).map(function (k) {
 			var ks = encodeURIComponent(stringifyPrimitive(k)) + eq;
 			if (Array.isArray(obj[k])) {
