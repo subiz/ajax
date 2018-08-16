@@ -89,7 +89,7 @@ class Request {
 		return req
 	}
 
-	async send(data) {
+	send(data) {
 		let req = this.clone()
 		if (data) {
 			if (this.content_type == 'json') {
