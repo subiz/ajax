@@ -65,7 +65,7 @@ var Request = function () {
 			req.content_type = this.content_type;
 			req.hooks = this.hooks.slice();
 			req.body = this.body;
-			req.credentials = this.credentails;
+			req.credentials = this.credentials;
 			req.query = this.query;
 			return req;
 		}
