@@ -2,28 +2,34 @@
   "name": "@subiz/ajax",
   "version": "1.0.9",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/ajax.js",
   "scripts": {
     "test": "node test/client_test.js",
-    "build": "babel src -d ."
+    "build": "npx webpack"
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@bitbucket.org/subiz/ajax.git"
+    "url": "git+ssh://git@github.com/subiz/ajax.git"
   },
   "author": "Pham Kieu Thanh",
   "license": "MIT",
   "homepage": "https://bitbucket.org/subiz/ajax#readme",
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-core": "^6.26.3",
-    "babel-loader": "^7.1.5",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-polyfill": "^6.26.0",
-    "babel-preset-es2015": "^6.24.1",
-    "babel-preset-stage-0": "^6.24.1",
-    "babel-preset-stage-2": "^6.24.1",
+    "@babel/cli": "^7.0.0",
+    "@babel/core": "^7.0.0",
+    "@babel/plugin-proposal-optional-chaining": "^7.0.0",
+    "@babel/polyfill": "^7.0.0",
+    "@babel/preset-env": "^7.0.0",
+    "babel-loader": "^8.0.2",
     "eslint": "^5.3.0",
-    "node-fetch": "^2.2.0"
+    "node-fetch": "^2.2.0",
+    "uglifyjs-webpack-plugin": "^1.3.0",
+    "webpack": "^4.17.2",
+    "webpack-cli": "^3.1.0",
+    "@babel/runtime": "^7.0.0",
+    "babel-runtime": "^6.26.0"
+  },
+  "dependencies": {
+    "querystring": "^0.2.0"
   }
 }
