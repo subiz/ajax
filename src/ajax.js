@@ -46,7 +46,7 @@ function newRequest () {
 		base: '',
 		path: '',
 		credentials: 'same-origin',
-		query: '',
+		query: {},
 	}
 
 	r.merge = function (obj) {
@@ -57,9 +57,24 @@ function newRequest () {
 		return Object.assign(newRequest(), this, { hooks: this.hooks.slice() })
 	}
 
+	r.addQuery = function (key, val) {
+		var req = this.clone()
+		req.query[key] = val
+		return req
+	}
+
+	r.removeQuery = function (key) {
+		var req = this.clone()
+		if (req.query[key] !== undefined) {
+			req.query[key] = undefined
+		}
+		return req
+	}
+
 	r.setQuery = function (query) {
-		if (!query) return this
-		return this.merge({ query: '?' + serializeQuery(query) })
+		var req = this.clone()
+		req.query = query
+		return req
 	}
 
 	r.setCredentials = function (credentials) {
@@ -127,7 +142,9 @@ function newRequest () {
 				req.body = data
 			}
 		}
-		req.url += (req.query || '')
+
+		var q = serializeQuery(req.query)
+		if (q) req.url += '?' + q
 		return dosend(req)
 	}
 	return r
