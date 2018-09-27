@@ -97,8 +97,8 @@ function newRequest () {
 
 	r.setPath = function (newpath) {
 		var req = this.clone()
-		req.path = newpath
-		return makeUrl(req)
+		req.path = norm(newpath)
+		return req
 	}
 
 	r.setHeader = function (headers) {
@@ -117,7 +117,7 @@ function newRequest () {
 	r.setBase = function (base) {
 		var req = this.clone()
 		req.base = norm(base)
-		return makeUrl(req)
+		return req
 	}
 
 	r.contentTypeJson = function () {
@@ -174,9 +174,12 @@ var serializeQuery = function (obj) {
 	return str.join('&')
 }
 
-var makeUrl = function (req) {
-	req.url = (req.base || '') + (req.path || '')
-	return req
+var getUrl = function (base, path) {
+	if (!path || !base) return base + path
+
+	if (!base.endsWith('/')) base += '/'
+	if (path.startsWith('/')) path = path.substring(1)
+	return base + path
 }
 
 var dosend = function (req) {
@@ -190,8 +193,9 @@ var dosend = function (req) {
 		var param
 		var q = serializeQuery(req.query)
 		if (q) q = '?' + q
+		var url = getUrl(req.base, req.path) + q
 		env.fetch
-			.bind(env.window)(req.url + q, req)
+			.bind(env.window)(url, req)
 			.then(function (r) {
 				resp = r
 				return resp.text()
