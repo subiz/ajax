@@ -39,6 +39,8 @@ function asis (data) {
 	return data
 }
 
+// var g_relations = {}
+
 function newRequest () {
 	var r = {
 		parse: asis,
@@ -81,6 +83,12 @@ function newRequest () {
 		return this.merge({ credentials: credentials })
 	}
 
+	r.clearHooks = function () {
+		var req = this.clone()
+		req.hooks = []
+		return req
+	}
+
 	r.injectHook = function (f) {
 		var req = this.clone()
 		req.hooks.push(f)
@@ -112,6 +120,14 @@ function newRequest () {
 		return makeUrl(req)
 	}
 
+	r.contentTypeJson = function () {
+		return this.merge({ content_type: 'application/json; charset=utf-8' })
+	}
+
+	r.contentTypeForm = function () {
+		return this.merge({ content_type: 'application/x-www-form-urlencoded' })
+	}
+
 	r.setContentType = function (ty) {
 		return this.merge({ content_type: norm(ty) })
 	}
@@ -134,17 +150,15 @@ function newRequest () {
 	r.send = function (data) {
 		var req = this.clone()
 		if (data) {
-			if (this.content_type === 'json') {
+			if (this.content_type === 'application/json; charset=utf-8') {
 				req.body = JSON.stringify(data)
-			} else if (this.content_type === 'form') {
+			} else if (this.content_type === 'application/x-www-form-urlencoded') {
 				req.body = querystring.stringify(data)
 			} else {
 				req.body = data
 			}
 		}
 
-		var q = serializeQuery(req.query)
-		if (q) req.url += '?' + q
 		return dosend(req)
 	}
 	return r
@@ -167,7 +181,6 @@ var makeUrl = function (req) {
 
 var dosend = function (req) {
 	return new Promise(function (rs, rj) {
-		req.content_type = getRealType(req.content_type)
 		if (req.content_type) {
 			req.headers = Object.assign(req.headers || {}, {
 				'Content-Type': req.content_type,
@@ -175,8 +188,10 @@ var dosend = function (req) {
 		}
 		var resp
 		var param
+		var q = serializeQuery(req.query)
+		if (q) q = '?' + q
 		env.fetch
-			.bind(env.window)(req.url, req)
+			.bind(env.window)(req.url + q, req)
 			.then(function (r) {
 				resp = r
 				return resp.text()
@@ -202,17 +217,6 @@ var dosend = function (req) {
 
 var norm = function (str) {
 	return (str || '').trim()
-}
-
-var getRealType = function (type) {
-	type = norm(type)
-	switch (type) {
-	case 'json':
-		return 'application/json; charset=utf-8'
-	case 'form':
-		return 'application/x-www-form-urlencoded'
-	}
-	return type
 }
 
 var env = {
