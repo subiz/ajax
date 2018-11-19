@@ -140,6 +140,7 @@ function newRequest () {
 		switch (norm(parser)) {
 		case 'json':
 			req.parse = function (data) {
+				if (data === undefined) return
 				return JSON.parse(data)
 			}
 			break
@@ -230,6 +231,7 @@ var env = {
 	fetch: {},
 	window: {},
 }
+
 module.exports = {
 	post: post,
 	del: del,
@@ -238,27 +240,6 @@ module.exports = {
 	env: env,
 	get: get,
 }
-/*
-var p1 = function () {
-	return new Promise(function (r) {
-		console.log('call p1')
-		setTimeout(r, 1000, true)
-	})
-}
-var p2 = function () {
-	return new Promise(r => {
-		console.log('call p2')
-		setTimeout(r, 1000, false)
-	})
-}
-var p3 = function () {
-	return new Promise(r => {
-		console.log('call p3')
-		setTimeout(r, 1000, true)
-	})
-}
-var ps = [p1, p2, p3]
-*/
 
 function waterfall (ps, param) {
 	if (ps.length === 0) {
@@ -276,8 +257,3 @@ function waterfall (ps, param) {
 		return waterfall(ps)
 	})
 }
-/*
-waterfall(ps).then(_ => {
-	console.log('ok')
-})
-*/
