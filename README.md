@@ -3,7 +3,7 @@
 * simple
 * tiny
 * zero dependencies
-* *immutatble*
+* *immutable*
 
 fetch api wrapper
 
