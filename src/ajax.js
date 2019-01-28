@@ -56,7 +56,10 @@ function newRequest () {
 	}
 
 	r.clone = function () {
-		return Object.assign(newRequest(), this, { hooks: this.hooks.slice() })
+		return Object.assign(newRequest(), this, {
+			query: Object.assign({}, this,query),
+			hooks: this.hooks.slice(),
+		})
 	}
 
 	r.addQuery = function (key, val) {
