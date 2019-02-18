@@ -35,6 +35,13 @@ function head (base, path) {
 		.setPath(path)
 }
 
+function put (base, path) {
+	return newRequest()
+		.setMethod('PUT')
+		.setBase(base)
+		.setPath(path)
+}
+
 function asis (data) {
 	return data
 }
