@@ -246,6 +246,7 @@ module.exports = {
 	patch: patch,
 	env: env,
 	get: get,
+	put: put,
 }
 
 function waterfall (ps, param) {
