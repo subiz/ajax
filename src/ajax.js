@@ -52,6 +52,7 @@ function newRequest () {
 	var r = {
 		parse: asis,
 		hooks: [],
+		beforehooks: [],
 		base: '',
 		path: '',
 		credentials: 'same-origin',
@@ -66,6 +67,7 @@ function newRequest () {
 		return Object.assign(newRequest(), this, {
 			query: Object.assign({}, this.query),
 			hooks: this.hooks.slice(),
+			beforehooks: this.beforehooks.slice(),
 		})
 	}
 
@@ -96,6 +98,13 @@ function newRequest () {
 	r.clearHooks = function () {
 		var req = this.clone()
 		req.hooks = []
+		req.beforehooks = []
+		return req
+	}
+
+	r.beforeHook = function (promise) {
+		var req = this.clone()
+		req.beforehooks.push(promise)
 		return req
 	}
 
@@ -170,7 +179,10 @@ function newRequest () {
 			}
 		}
 
-		return dosend(req)
+		var param = { request: req }
+		return waterfall(req.beforehooks, param).then(function () {
+			return dosend(param.request)
+		})
 	}
 	return r
 }
@@ -255,13 +267,14 @@ function waterfall (ps, param) {
 			r(true)
 		})
 	}
+
 	var fp = ps.shift()
 	return fp(param).then(function (b) {
-		if (!b) {
+		if (b === false) {
 			return new Promise(function (r) {
 				r(false)
 			})
 		}
-		return waterfall(ps)
+		return waterfall(ps, param)
 	})
 }
