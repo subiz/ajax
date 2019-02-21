@@ -1,52 +1,28 @@
 var querystring = require('./querystring.js')
 
 function get (base, path) {
-	return newRequest()
-		.setMethod('GET')
-		.setBase(base)
-		.setPath(path)
+	return newRequest().init('GET', base, path)
 }
 
 function post (base, path) {
-	return newRequest()
-		.setMethod('POST')
-		.setBase(base)
-		.setPath(path)
+	return newRequest().init('POST', base, path)
 }
 
 function del (base, path) {
-	return newRequest()
-		.setMethod('DELETE')
-		.setBase(base)
-		.setPath(path)
+	return newRequest().init('DELETE', base, path)
 }
 
 function patch (base, path) {
-	return newRequest()
-		.setMethod('PATCH')
-		.setBase(base)
-		.setPath(path)
+	return newRequest().init('PATCH', base, path)
 }
 
 function head (base, path) {
-	return newRequest()
-		.setMethod('HEAD')
-		.setBase(base)
-		.setPath(path)
+	return newRequest().init('HEAD', base, path)
 }
 
 function put (base, path) {
-	return newRequest()
-		.setMethod('PUT')
-		.setBase(base)
-		.setPath(path)
+	return newRequest().init('PUT', base, path)
 }
-
-function asis (data) {
-	return data
-}
-
-// var g_relations = {}
 
 function newRequest () {
 	var r = {
@@ -57,6 +33,13 @@ function newRequest () {
 		path: '',
 		credentials: 'same-origin',
 		query: {},
+	}
+
+	r.init = function (method, base, path) {
+		var req = r.clone().setMethod(method)
+		if (base) req = req.setBase(base)
+		if (path) req = req.setPath(path)
+		return req
 	}
 
 	r.merge = function (obj) {
@@ -128,45 +111,27 @@ function newRequest () {
 	}
 
 	r.put = function (base, path) {
-		var req = this.clone().setMethod('PUT')
-		if (base) req = req.setBase(base)
-		if (path) req = req.setPath(path)
-		return req
+		return r.init('PUT', base, path)
 	}
 
 	r.head = function (base, path) {
-		var req = this.clone().setMethod('HEAD')
-		if (base) req = req.setBase(base)
-		if (path) req = req.setPath(path)
-		return req
+		return r.init('HEAD', base, path)
 	}
 
 	r.patch = function (base, path) {
-		var req = this.clone().setMethod('PATCH')
-		if (base) req = req.setBase(base)
-		if (path) req = req.setPath(path)
-		return req
+		return r.init('PATCH', base, path)
 	}
 
 	r.del = function (base, path) {
-		var req = this.clone().setMethod('DELETE')
-		if (base) req = req.setBase(base)
-		if (path) req = req.setPath(path)
-		return req
+		return r.init('DELETE', base, path)
 	}
 
 	r.post = function (base, path) {
-		var req = this.clone().setMethod('POST')
-		if (base) req = req.setBase(base)
-		if (path) req = req.setPath(path)
-		return req
+		return r.init('POST', base, path)
 	}
 
 	r.get = function (base, path) {
-		var req = this.clone().setMethod('GET')
-		if (base) req = req.setBase(base)
-		if (path) req = req.setPath(path)
-		return req
+		return r.init('GET', base, path)
 	}
 
 	r.setMethod = function (method) {
@@ -229,16 +194,6 @@ function newRequest () {
 	return r
 }
 
-var serializeQuery = function (obj) {
-	var str = []
-	for (var p in obj) {
-		if (obj.hasOwnProperty(p)) {
-			str.push(encodeURIComponent(p) + '=' + encodeURIComponent(obj[p]))
-		}
-	}
-	return str.join('&')
-}
-
 var getUrl = function (base, path) {
 	if (!path || !base) return base + path
 
@@ -256,7 +211,7 @@ var dosend = function (req) {
 		}
 		var resp
 		var param
-		var q = serializeQuery(req.query)
+		var q = querystring.stringify(req.query)
 		if (q) q = '?' + q
 		var url = getUrl(req.base, req.path) + q
 		env.fetch
@@ -284,8 +239,12 @@ var dosend = function (req) {
 	})
 }
 
-var norm = function (str) {
+function norm (str) {
 	return (str || '').trim()
+}
+
+function  asis (data) {
+	return data
 }
 
 var env = {
