@@ -1,4 +1,4 @@
-var querystring = require('querystring')
+var querystring = require('./querystring.js')
 
 function get (base, path) {
 	return newRequest()
