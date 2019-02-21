@@ -127,6 +127,48 @@ function newRequest () {
 		return req
 	}
 
+	r.put = function (base, path) {
+		var req = this.clone().setMethod('PUT')
+		if (base) req = req.setBase(base)
+		if (path) req = req.setPath(path)
+		return req
+	}
+
+	r.head = function (base, path) {
+		var req = this.clone().setMethod('HEAD')
+		if (base) req = req.setBase(base)
+		if (path) req = req.setPath(path)
+		return req
+	}
+
+	r.patch = function (base, path) {
+		var req = this.clone().setMethod('PATCH')
+		if (base) req = req.setBase(base)
+		if (path) req = req.setPath(path)
+		return req
+	}
+
+	r.del = function (base, path) {
+		var req = this.clone().setMethod('DELETE')
+		if (base) req = req.setBase(base)
+		if (path) req = req.setPath(path)
+		return req
+	}
+
+	r.post = function (base, path) {
+		var req = this.clone().setMethod('POST')
+		if (base) req = req.setBase(base)
+		if (path) req = req.setPath(path)
+		return req
+	}
+
+	r.get = function (base, path) {
+		var req = this.clone().setMethod('GET')
+		if (base) req = req.setBase(base)
+		if (path) req = req.setPath(path)
+		return req
+	}
+
 	r.setMethod = function (method) {
 		var req = this.clone()
 		req.method = norm(method)
