@@ -74,6 +74,12 @@ function newRequest () {
 		return req
 	}
 
+	r.setMode = function (mode) {
+		var req = this.clone()
+		req.mode = mode
+		return req
+	}
+
 	r.setCredentials = function (credentials) {
 		return this.merge({ credentials: credentials })
 	}
