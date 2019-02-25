@@ -31,12 +31,11 @@ function newRequest () {
 		beforehooks: [],
 		base: '',
 		path: '',
-		credentials: 'same-origin',
 		query: {},
 	}
 
 	r.init = function (method, base, path) {
-		var req = r.clone().setMethod(method)
+		var req = this.clone().setMethod(method)
 		if (base) req = req.setBase(base)
 		if (path) req = req.setPath(path)
 		return req
@@ -69,15 +68,11 @@ function newRequest () {
 	}
 
 	r.setQuery = function (query) {
-		var req = this.clone()
-		req.query = query
-		return req
+		return this.merge({ query: query })
 	}
 
 	r.setMode = function (mode) {
-		var req = this.clone()
-		req.mode = mode
-		return req
+		return this.merge({ mode: mode })
 	}
 
 	r.setCredentials = function (credentials) {
@@ -117,27 +112,27 @@ function newRequest () {
 	}
 
 	r.put = function (base, path) {
-		return r.init('PUT', base, path)
+		return this.init('PUT', base, path)
 	}
 
 	r.head = function (base, path) {
-		return r.init('HEAD', base, path)
+		return this.init('HEAD', base, path)
 	}
 
 	r.patch = function (base, path) {
-		return r.init('PATCH', base, path)
+		return this.init('PATCH', base, path)
 	}
 
 	r.del = function (base, path) {
-		return r.init('DELETE', base, path)
+		return this.init('DELETE', base, path)
 	}
 
 	r.post = function (base, path) {
-		return r.init('POST', base, path)
+		return this.init('POST', base, path)
 	}
 
 	r.get = function (base, path) {
-		return r.init('GET', base, path)
+		return this.init('GET', base, path)
 	}
 
 	r.setMethod = function (method) {
@@ -249,7 +244,7 @@ function norm (str) {
 	return (str || '').trim()
 }
 
-function  asis (data) {
+function asis (data) {
 	return data
 }
 
