@@ -29,7 +29,7 @@ function stringify (obj) {
 			param = encodeURICom(key) + '=' + encodeURICom(value)
 		} else {
 			// array
-			const arr = []
+			var arr = []
 			for (var i = 0; i < value.length; i++) {
 				if (value[i] === undefined) continue
 				arr.push(encoderForArrayFormat(key, value[i], arr.length))
