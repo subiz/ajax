@@ -1,3 +1,7 @@
+[![npm][npm]][npm-url]
+[![deps][deps]][deps-url]
+[![size][size]][size-url]
+
 # @subiz/ajax
 * *exception-free*
 * simple
@@ -183,3 +187,10 @@ const apireq = new ajax.Request()
 let [code, body, err] = await apireq.setPath("me").send()
 
 ```
+
+[npm]: https://img.shields.io/npm/v/@subiz/ajax.svg
+[npm-url]: https://npmjs.com/package/@subiz/ajax
+[deps]: https://david-dm.org/@subiz/ajax.svg
+[deps-url]: https://david-dm.org/@subiz/ajax
+[size]: https://packagephobia.now.sh/badge?p=@subiz/ajax
+[size-url]: https://packagephobia.now.sh/result?p=@subiz/ajax
