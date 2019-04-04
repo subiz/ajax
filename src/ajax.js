@@ -195,7 +195,7 @@ function newRequest () {
 	return r
 }
 
-var getUrl = function (base, path) {
+function getUrl (base, path) {
 	if (!path || !base) return base + path
 
 	if (!base.endsWith('/')) base += '/'
@@ -215,17 +215,17 @@ var dosend = function (req) {
 		var q = querystring.stringify(req.query)
 		if (q) q = '?' + q
 		var url = getUrl(req.base, req.path) + q
-		env.fetch
-			.bind(env.window)(url, req)
-			.then(function (r) {
+		env.fetch.
+			bind(env.window)(url, req).
+			then(function (r) {
 				resp = r
 				return resp.text()
-			})
-			.then(function (body) {
+			}).
+			then(function (body) {
 				param = { req: req, code: resp.status, body: body }
 				return waterfall(req.hooks, param)
-			})
-			.then(function () {
+			}).
+			then(function () {
 				var body = param.body
 				try {
 					body = req.parse(body)
@@ -233,8 +233,8 @@ var dosend = function (req) {
 				} catch (err) {
 					rs([undefined, undefined, err])
 				}
-			})
-			.catch(function (err) {
+			}).
+			catch(function (err) {
 				rs([0, undefined, err])
 			})
 	})
