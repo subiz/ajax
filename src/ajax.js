@@ -31,6 +31,7 @@ function newRequest () {
 		beforehooks: [],
 		base: '',
 		path: '',
+		credentials: 'include',
 		query: {},
 	}
 
