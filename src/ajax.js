@@ -189,8 +189,9 @@ function newRequest () {
 		}
 
 		var param = { request: req }
-		return waterfall(req.beforehooks, param).then(function () {
-			return dosend(param.request)
+		return waterfall(req.beforehooks, param).then(function (b) {
+			if (b[0]) return dosend(param.request)
+			return Promise.resolve(b[1])
 		})
 	}
 	return r
@@ -265,19 +266,10 @@ module.exports = {
 }
 
 function waterfall (ps, param) {
-	if (ps.length === 0) {
-		return new Promise(function (r) {
-			r(true)
-		})
-	}
+	if (ps.length === 0) return Promise.resolve([true])
 
 	var fp = ps.shift()
 	return fp(param).then(function (b) {
-		if (b === false) {
-			return new Promise(function (r) {
-				r(false)
-			})
-		}
-		return waterfall(ps, param)
+		return b[0] ? waterfall(ps, param) : Promise.resolve(b)
 	})
 }
