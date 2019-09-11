@@ -2,10 +2,10 @@
 [![deps][deps]][deps-url]
 [![size][size]][size-url]
 
-# @subiz/ajax
+# @subiz/ajax@1.0.29
 * *exception-free*
 * simple
-* tiny
+* tiny (2K Gzipped)
 * zero dependencies
 * *immutable*
 
@@ -28,11 +28,7 @@ let req = new ajax.newRequest()
   .setPath("ping")
   .setMethod("GET")
 
-// or
-
-let req = new ajax.newRequest().get("https://app.subiz.net/v4/", "ping")
-
-// or even shorter
+// or shorter
 
 let req = new ajax.get("https://app.subiz.net/v4/", "ping")
 
@@ -79,16 +75,19 @@ req = req.setQuery({a:"xin chao", b: 6})
 create a new derived object by registering (appending) a before hook
 
 #### `clearHooks`
-create a new derived object by removing all before hooks and inject hooks
+create a new derived object by removing all before hooks and after hooks
 
-#### `injectHook(promise)`
-create a new derived object by registering (appending) a inject hook
+#### `afterHook(promise)`
+create a new derived object by registering (appending) a hook
 
 #### `setPath(path)`
 create a new derived object by changing old request path. New request url will be compose from `base` and `path`.
 
 #### `setHeader(header)`
 create a new derived object by merging old header with new header
+
+#### `setMeta(key, value)`
+attach hidden metadata to request, those key-value will not be sent to the server, designed to keep state in hooks
 
 examples:
 ```js
@@ -107,6 +106,7 @@ req = req.setHeader({"x-real-ip": "193.155.45.3"})
 #### `setContentType`
 #### `setParser`
 #### `send`
+#### `setMeta`
 
 ### Ajax object (singleton)
 Ajax object is lets you create request object. Available requests:
@@ -138,50 +138,24 @@ await req.send() // https://google.com?a=5&b=6
 before hook is called one by one in registered order, which hook registered first will be called
 first.
 
-### With hooks
+### With after hook
 ```
 const apireq = new ajax.Request()
   .setBase("https://appv4.subiz.com/4.0/")
   .setMethod("GET")
-  .injectHook(async param => {
-    if (param.code == 200) return true
-    let err
-    try {
-      err = JSON.parse(param.body)
-    } catch (e) {}
-
-    if (!err) return true
-    if (err.code !== 'invalid_access_token' &&
-	  err.code !== 'invalid_credential') return true
-
-    if (refreshing_state === 'normal') {
-      refreshing_state = 'refreshing'
-      let [code, body] = await new ajax.Request()
-        .setMethod('post')
-        .setBase("http://app.subiz.net/v4/refresh-token")
-        .send()
-
-      if (code != 200) {
-        refreshing_state = 'dead'
-        return true
-      }
-
-      refreshing_state = 'normal'
-    } else if (refreshing_state == 'dead') {
-      return true
-    } else {
-      for (; refreshing_state != 'refreshing';) await sleep(200)
-      if (refreshing_state == 'dead') return true
-    }
-
-    // resent
-    let [code, body, err1] = await param.req.send()
-
-    if (err1) return true
-    param.code = code
-    param.body = JSON.stringify(body)
-
-    return true
+  .afterHook(param => {
+		if (param.code !== 500) return
+		var retry = param.request.meta.retry || 0
+		if (retry === 3) return
+		var req = param.request.setMeta('retry', retry + 1) // increase number of attempt
+		// continue retry
+		return req.send().then(out => {
+			var [code, body, err] = out
+			param.code = code
+			param.body = body
+			param.err = err
+		})
+	})
 })
 
 let [code, body, err] = await apireq.setPath("me").send()
