@@ -1,45 +1,50 @@
 var querystring = require('./querystring.js')
 
-function get (base, path) {
-	return newRequest().init('GET', base, path)
+function get (base, path, root) {
+	return init(root, 'GET', base, path)
 }
 
-function post (base, path) {
-	return newRequest().init('POST', base, path)
+function post (base, path, root) {
+	return init(root, 'POST', base, path)
 }
 
-function del (base, path) {
-	return newRequest().init('DELETE', base, path)
+function del (base, path, root) {
+	return init(root, 'DELETE', base, path)
 }
 
-function patch (base, path) {
-	return newRequest().init('PATCH', base, path)
+function patch (base, path, root) {
+	return init(root, 'PATCH', base, path)
 }
 
-function head (base, path) {
-	return newRequest().init('HEAD', base, path)
+function head (base, path, root) {
+	return init(root, 'HEAD', base, path)
 }
 
-function put (base, path) {
-	return newRequest().init('PUT', base, path)
+function put (base, path, root) {
+	return init(root, 'PUT', base, path)
+}
+
+function init (root, method, base, path) {
+	var req
+	if (!root) req = newRequest()
+	else req = root.clone()
+
+	req.method = method
+	if (base) req.base = norm(base)
+	if (path) req.path = norm(path)
+	return req
 }
 
 function newRequest () {
 	var r = {
 		parse: asis,
-		hooks: [],
 		beforehooks: [],
+		afterhooks: [],
 		base: '',
 		path: '',
 		credentials: 'include',
 		query: {},
-	}
-
-	r.init = function (method, base, path) {
-		var req = this.clone().setMethod(method)
-		if (base) req = req.setBase(base)
-		if (path) req = req.setPath(path)
-		return req
+		meta: {},
 	}
 
 	r.merge = function (obj) {
@@ -49,8 +54,7 @@ function newRequest () {
 	r.clone = function () {
 		return Object.assign(newRequest(), this, {
 			query: Object.assign({}, this.query),
-			hooks: this.hooks.slice(),
-			beforehooks: this.beforehooks.slice(),
+			meta: Object.assign({}, this.meta),
 		})
 	}
 
@@ -62,9 +66,7 @@ function newRequest () {
 
 	r.removeQuery = function (key) {
 		var req = this.clone()
-		if (req.query[key] !== undefined) {
-			req.query[key] = undefined
-		}
+		if (req.query[key] !== undefined) req.query[key] = undefined
 		return req
 	}
 
@@ -81,21 +83,24 @@ function newRequest () {
 	}
 
 	r.clearHooks = function () {
-		var req = this.clone()
+		var req = this.clone({ nohook: true })
 		req.hooks = []
 		req.beforehooks = []
+		req.afterhooks = []
 		return req
 	}
 
 	r.beforeHook = function (promise) {
 		var req = this.clone()
+		req.beforehooks = req.beforehooks.slice()
 		req.beforehooks.push(promise)
 		return req
 	}
 
-	r.injectHook = function (f) {
+	r.afterHook = function (promise) {
 		var req = this.clone()
-		req.hooks.push(f)
+		req.afterhooks = req.afterhooks.slice()
+		req.afterhooks.push(promise)
 		return req
 	}
 
@@ -113,27 +118,27 @@ function newRequest () {
 	}
 
 	r.put = function (base, path) {
-		return this.init('PUT', base, path)
+		return put(base, path, this)
 	}
 
 	r.head = function (base, path) {
-		return this.init('HEAD', base, path)
+		return head(base, path, this)
 	}
 
 	r.patch = function (base, path) {
-		return this.init('PATCH', base, path)
+		return patch(base, path, this)
 	}
 
 	r.del = function (base, path) {
-		return this.init('DELETE', base, path)
+		return del(base, path, this)
 	}
 
 	r.post = function (base, path) {
-		return this.init('POST', base, path)
+		return post(base, path, this)
 	}
 
 	r.get = function (base, path) {
-		return this.init('GET', base, path)
+		return get(base, path, this)
 	}
 
 	r.setMethod = function (method) {
@@ -176,6 +181,22 @@ function newRequest () {
 		return req
 	}
 
+	r.setBody = function (body) {
+		var req = this.clone()
+		req.body = body
+		return req
+	}
+
+	r.getMeta = function (k) {
+		return this.meta[k]
+	}
+
+	r.setMeta = function (k, v) {
+		var req = this.clone()
+		req.meta[k] = v
+		return req
+	}
+
 	r.send = function (data) {
 		var req = this.clone()
 		if (data) {
@@ -188,11 +209,26 @@ function newRequest () {
 			}
 		}
 
-		var param = { request: req }
-		return waterfall(req.beforehooks, param).then(function (b) {
-			if (b[0]) return dosend(param.request)
-			return Promise.resolve(b[1])
-		})
+		var bp = { request: req }
+		return waterfall(req.beforehooks.slice(), bp).
+			then(function () {
+				return dosend(bp.request)
+			}).
+			then(function (out) {
+				var status = out[0]
+				var body = out[1]
+				var err = out[2]
+				var param = { request: req, code: status, body: body, err: err }
+				return waterfall(req.afterhooks.slice(), param)
+			}).
+			then(function (param) {
+				try {
+					var body = req.parse(param.body)
+					return [param.code, body, param.err]
+				} catch (err) {
+					return [undefined, undefined, err]
+				}
+			})
 	}
 	return r
 }
@@ -206,40 +242,27 @@ function getUrl (base, path) {
 }
 
 var dosend = function (req) {
-	return new Promise(function (rs, rj) {
-		if (req.content_type) {
-			req.headers = Object.assign(req.headers || {}, {
-				'Content-Type': req.content_type,
-			})
-		}
-		var resp
-		var param
-		var q = querystring.stringify(req.query)
-		if (q) q = '?' + q
-		var url = getUrl(req.base, req.path) + q
-		env.fetch.
-			bind(env.window)(url, req).
-			then(function (r) {
-				resp = r
-				return resp.text()
-			}).
-			then(function (body) {
-				param = { req: req, code: resp.status, body: body }
-				return waterfall(req.hooks, param)
-			}).
-			then(function () {
-				var body = param.body
-				try {
-					body = req.parse(body)
-					rs([param.code, body])
-				} catch (err) {
-					rs([undefined, undefined, err])
-				}
-			}).
-			catch(function (err) {
-				rs([0, undefined, err])
-			})
-	})
+	if (req.content_type) {
+		req.headers = Object.assign(req.headers || {}, {
+			'Content-Type': req.content_type,
+		})
+	}
+	var resp
+	var q = querystring.stringify(req.query)
+	if (q) q = '?' + q
+	var url = getUrl(req.base, req.path) + q
+	return env.fetch.
+		bind(env.window)(url, req).
+		then(function (r) {
+			resp = r
+			return resp.text()
+		}).
+		then(function (body) {
+			return [resp.status, body]
+		}).
+		catch(function (err) {
+			return [0, undefined, err]
+		})
 }
 
 function norm (str) {
@@ -266,10 +289,17 @@ module.exports = {
 }
 
 function waterfall (ps, param) {
-	if (ps.length === 0) return Promise.resolve([true])
+	if (!ps || ps.length === 0) return Promise.resolve(param)
 
 	var fp = ps.shift()
-	return fp(param).then(function (b) {
-		return b[0] ? waterfall(ps, param) : Promise.resolve(b)
-	})
+	var out = fp(param)
+	if (out && out.then) {
+		return out.then(function () {
+			if (!param.stop) return waterfall(ps, param)
+			return Promise.resolve(param)
+		})
+	} else {
+		if (!param.stop) return waterfall(ps, param)
+		return Promise.resolve(param)
+	}
 }
