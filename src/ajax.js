@@ -189,10 +189,6 @@ function newRequest () {
 		return req
 	}
 
-	r.getMeta = function (k) {
-		return this.meta[k]
-	}
-
 	r.setMeta = function (k, v) {
 		var req = this.clone()
 		req.meta[k] = v

@@ -70,7 +70,7 @@ test('after hook retry fail', async t => {
 	let req = ajax.get().afterHook(param => {
 		if (param.code !== 500) return
 		count++
-		var retry = param.request.getMeta('retry') || 0
+		var retry = param.request.meta.retry || 0
 		if (retry === 3) return
 		var req = param.request.setMeta('retry', retry + 1) // increase counter
 		// continue retry
@@ -95,7 +95,7 @@ test('after hook retry success', async t => {
 	let req = ajax.get().afterHook(param => {
 		if (param.code !== 500) return
 		count++
-		var retry = param.request.getMeta('retry') || 0
+		var retry = param.request.meta.retry || 0
 		if (retry === 2) {
 			param.request = param.request.get('https://httpstat.us/200')
 		}
