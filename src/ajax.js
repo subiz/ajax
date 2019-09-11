@@ -35,6 +35,12 @@ function init (root, method, base, path) {
 	return req
 }
 
+function merge (req, obj) {
+	return Object.assign(req, obj)
+}
+
+var CONTENT_TYPE = 'Content-Type'
+
 function newRequest () {
 	var r = {
 		parse: asis,
@@ -47,12 +53,8 @@ function newRequest () {
 		meta: {},
 	}
 
-	r.merge = function (obj) {
-		return Object.assign(this.clone(), obj)
-	}
-
 	r.clone = function () {
-		return Object.assign(newRequest(), this, {
+		return Object.assign({}, this, {
 			query: Object.assign({}, this.query),
 			meta: Object.assign({}, this.meta),
 		})
@@ -71,15 +73,15 @@ function newRequest () {
 	}
 
 	r.setQuery = function (query) {
-		return this.merge({ query: query })
+		return merge(this, { query: query })
 	}
 
 	r.setMode = function (mode) {
-		return this.merge({ mode: mode })
+		return merge(this, { mode: mode })
 	}
 
 	r.setCredentials = function (credentials) {
-		return this.merge({ credentials: credentials })
+		return merge(this, { credentials: credentials })
 	}
 
 	r.clearHooks = function () {
@@ -113,7 +115,7 @@ function newRequest () {
 	r.setHeader = function (headers) {
 		var req = this.clone()
 		req.headers = Object.assign({}, this.headers, headers)
-		req.headers['Content-Type'] = undefined
+		req.headers[CONTENT_TYPE] = undefined
 		return req
 	}
 
@@ -154,15 +156,15 @@ function newRequest () {
 	}
 
 	r.contentTypeJson = function () {
-		return this.merge({ content_type: 'application/json; charset=utf-8' })
+		return merge(this, { content_type: 'application/json; charset=utf-8' })
 	}
 
 	r.contentTypeForm = function () {
-		return this.merge({ content_type: 'application/x-www-form-urlencoded' })
+		return merge(this, { content_type: 'application/x-www-form-urlencoded' })
 	}
 
 	r.setContentType = function (ty) {
-		return this.merge({ content_type: norm(ty) })
+		return merge(this, { content_type: norm(ty) })
 	}
 
 	r.setParser = function (parser) {
@@ -198,8 +200,9 @@ function newRequest () {
 	}
 
 	r.send = function (data) {
-		var req = this.clone()
+		var req = this
 		if (data) {
+			req = this.clone()
 			if (this.content_type === 'application/json; charset=utf-8') {
 				req.body = JSON.stringify(data)
 			} else if (this.content_type === 'application/x-www-form-urlencoded') {
@@ -209,25 +212,29 @@ function newRequest () {
 			}
 		}
 
-		var bp = { request: req }
-		return waterfall(req.beforehooks.slice(), bp).
-			then(function () {
+		return waterfall(req.beforehooks.slice(), { request: req }).
+			then(function (bp) {
+				if (bp.error) return Promise.reject(bp.error)
 				return dosend(bp.request)
 			}).
 			then(function (out) {
-				var status = out[0]
-				var body = out[1]
-				var err = out[2]
-				var param = { request: req, code: status, body: body, err: err }
-				return waterfall(req.afterhooks.slice(), param)
+				return waterfall(req.afterhooks.slice(), {
+					request: req,
+					code: out[0],
+					body: out[1],
+					err: out[2],
+				})
 			}).
 			then(function (param) {
 				try {
 					var body = req.parse(param.body)
 					return [param.code, body, param.err]
 				} catch (err) {
-					return [undefined, undefined, err]
+					return [0, undefined, err]
 				}
+			}).
+			catch(function (err) {
+				return [0, undefined, err]
 			})
 	}
 	return r
@@ -243,9 +250,8 @@ function getUrl (base, path) {
 
 var dosend = function (req) {
 	if (req.content_type) {
-		req.headers = Object.assign(req.headers || {}, {
-			'Content-Type': req.content_type,
-		})
+		req.headers = Object.assign({}, req.headers)
+		req.headers[CONTENT_TYPE] = req.content_type
 	}
 	var resp
 	var q = querystring.stringify(req.query)
@@ -295,11 +301,7 @@ function waterfall (ps, param) {
 	var out = fp(param)
 	if (out && out.then) {
 		return out.then(function () {
-			if (!param.stop) return waterfall(ps, param)
-			return Promise.resolve(param)
+			return param.stop ? Promise.resolve(param) : waterfall(ps, param)
 		})
-	} else {
-		if (!param.stop) return waterfall(ps, param)
-		return Promise.resolve(param)
-	}
+	} else return param.stop ? Promise.resolve(param) : waterfall(ps, param)
 }

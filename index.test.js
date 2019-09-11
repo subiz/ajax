@@ -4,6 +4,28 @@ var ajax = require('./src/ajax.js')
 ajax.env.fetch = fetch
 // ajax.env.window = {}
 
+test('before hook error', async t => {
+	let req = ajax.
+		get().
+		beforeHook(async param => {
+			param.request = param.request.addQuery('a', 'xinchao')
+		}).
+		beforeHook(async param => {
+			param.stop = true
+			param.error = 'just an sample error'
+		})
+
+	let [code, body, err] = await req.
+		get('https://postman-echo.com/get').
+		setParser('json').
+		send()
+
+	t.equal(code, 0)
+	t.equal(err, 'just an sample error')
+	t.equal(body, undefined)
+	t.end()
+})
+
 test('before hook', async t => {
 	let req = ajax.
 		get().
