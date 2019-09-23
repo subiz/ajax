@@ -195,7 +195,7 @@ function newRequest () {
 		return req
 	}
 
-	r.send = function (data) {
+	r.send = function (data, cb) {
 		var req = this
 		if (data) {
 			req = this.clone()
@@ -208,30 +208,30 @@ function newRequest () {
 			}
 		}
 
-		return waterfall(req.beforehooks.slice(), { request: req }).
-			then(function (bp) {
-				if (bp.error) return Promise.reject(bp.error)
-				return dosend(bp.request)
-			}).
-			then(function (out) {
-				return waterfall(req.afterhooks.slice(), {
-					request: req,
-					code: out[0],
-					body: out[1],
-					err: out[2],
+
+		cb = cb || function() {}
+		var resolve
+		var promise = new Promise(rs => {resolve = rs})
+		waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
+			if (bp.error) {
+				cb(bp.error, undefined, 0)
+				resolve([0, undefined, bp.error])
+				return
+			}
+			dosend(bp.request, function(err, body, code){
+				waterfall(req.afterhooks.slice(), {request: req,code: code,body: body,err: err}, function(param) {
+					try {
+						var body = req.parse(param.body)
+						cb(param.err, body, param.code)
+						resolve([param.code, body, param.err])
+					} catch (err) {
+						cb(err, undefined, 0)
+						resolve( [0, undefined, err])
+					}
 				})
-			}).
-			then(function (param) {
-				try {
-					var body = req.parse(param.body)
-					return [param.code, body, param.err]
-				} catch (err) {
-					return [0, undefined, err]
-				}
-			}).
-			catch(function (err) {
-				return [0, undefined, err]
 			})
+		})
+		return promise
 	}
 	return r
 }
@@ -244,7 +244,7 @@ function getUrl (base, path) {
 	return base + path
 }
 
-var dosend = function (req) {
+var dosend = function (req, cb) {
 	if (req.content_type) {
 		req.headers = Object.assign({}, req.headers)
 		req.headers[CONTENT_TYPE] = req.content_type
@@ -253,17 +253,17 @@ var dosend = function (req) {
 	var q = querystring.stringify(req.query)
 	if (q) q = '?' + q
 	var url = getUrl(req.base, req.path) + q
-	return env.fetch.
+	env.fetch.
 		bind(env.window)(url, req).
 		then(function (r) {
 			resp = r
 			return resp.text()
 		}).
 		then(function (body) {
-			return [resp.status, body]
+			cb(undefined, body, resp.status)
 		}).
 		catch(function (err) {
-			return [0, undefined, err]
+			cb(err, undefined, 0)
 		})
 }
 
