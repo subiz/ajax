@@ -288,16 +288,35 @@ module.exports = {
 	env: env,
 	get: get,
 	put: put,
+	waterfall: waterfall
+};
+
+function isFunc(f) {
+	return f && {}.toString.call(f) === "[object Function]"
 }
 
-function waterfall (ps, param) {
-	if (!ps || ps.length === 0) return Promise.resolve(param)
+function waterfall(ps, param, cb) {
+	if (!ps || ps.length === 0) {
+		cb(param);
+		return Promise.resolve(param)
+	}
 
 	var fp = ps.shift()
-	var out = fp(param)
-	if (out && out.then) {
-		return out.then(function () {
-			return param.stop ? Promise.resolve(param) : waterfall(ps, param)
-		})
-	} else return param.stop ? Promise.resolve(param) : waterfall(ps, param)
+	if (!isFunc(fp)) return waterfall(ps, param, cb)
+	if (fp.length < 2) {
+		var out = fp(param)
+		if (out && out.then) {
+			return out.then(function() {
+				return param.stop ? Promise.resolve(param) : waterfall(ps, param, cb)
+			})
+		} else
+			return param.stop ? Promise.resolve(param) : waterfall(ps, param, cb)
+	}
+	// callback
+	fp(param, out => {
+		if (param.stop) {
+			cb(param)
+			return Promise.resolve(param)
+		} else return waterfall(ps, param, cb)
+	})
 }
