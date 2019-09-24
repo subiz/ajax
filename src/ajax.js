@@ -25,10 +25,7 @@ function put (base, path, root) {
 }
 
 function init (root, method, base, path) {
-	var req
-	if (!root) req = newRequest()
-	else req = root.clone()
-
+	var req = root ? root.clone() : newRequest()
 	req.method = method
 	if (base) req.base = norm(base)
 	if (path) req.path = norm(path)
@@ -40,6 +37,8 @@ function merge (req, obj) {
 }
 
 var CONTENT_TYPE = 'Content-Type'
+var CONTENT_TYPE_FORM = 'application/x-www-form-urlencoded'
+var CONTENT_TYPE_JSON = 'application/json; charset=utf-8'
 
 function newRequest () {
 	var r = {
@@ -55,8 +54,8 @@ function newRequest () {
 
 	r.clone = function () {
 		return Object.assign({}, this, {
-			query: Object.assign({}, this.query),
-			meta: Object.assign({}, this.meta),
+			query: merge({}, this.query),
+			meta: merge({}, this.meta),
 		})
 	}
 
@@ -156,11 +155,11 @@ function newRequest () {
 	}
 
 	r.contentTypeJson = function () {
-		return merge(this, { content_type: 'application/json; charset=utf-8' })
+		return merge(this, { content_type: CONTENT_TYPE_JSON })
 	}
 
 	r.contentTypeForm = function () {
-		return merge(this, { content_type: 'application/x-www-form-urlencoded' })
+		return merge(this, { content_type: CONTENT_TYPE_FORM })
 	}
 
 	r.setContentType = function (ty) {
@@ -204,9 +203,9 @@ function newRequest () {
 		var req = this
 		if (data) {
 			req = this.clone()
-			if (this.content_type === 'application/json; charset=utf-8') {
+			if (this.content_type === CONTENT_TYPE_JSON) {
 				req.body = JSON.stringify(data)
-			} else if (this.content_type === 'application/x-www-form-urlencoded') {
+			} else if (this.content_type === CONTENT_TYPE_FORM) {
 				req.body = querystring.stringify(data)
 			} else {
 				req.body = data
@@ -215,7 +214,7 @@ function newRequest () {
 
 		waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
 			if (bp.error) return cb(bp.error, undefined, 0)
-			dosendXMLRequest(bp.request, function (err, body, code) {
+			dosend(bp.request, function (err, body, code) {
 				waterfall(
 					req.afterhooks.slice(),
 					{ request: req, code: code, body: body, err: err },
@@ -242,7 +241,7 @@ function getUrl (base, path) {
 	return base + path
 }
 
-var dosendXMLRequest = function (req, cb) {
+var dosend = function (req, cb) {
 	var q = querystring.stringify(req.query)
 	if (q) q = '?' + q
 	var url = getUrl(req.base, req.path) + q
