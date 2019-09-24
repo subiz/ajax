@@ -92,17 +92,17 @@ function newRequest () {
 		return req
 	}
 
-	r.beforeHook = function (promise) {
+	r.beforeHook = function (cb) {
 		var req = this.clone()
 		req.beforehooks = req.beforehooks.slice()
-		req.beforehooks.push(promise)
+		req.beforehooks.push(cb)
 		return req
 	}
 
-	r.afterHook = function (promise) {
+	r.afterHook = function (cb) {
 		var req = this.clone()
 		req.afterhooks = req.afterhooks.slice()
-		req.afterhooks.push(promise)
+		req.afterhooks.push(cb)
 		return req
 	}
 
@@ -213,16 +213,8 @@ function newRequest () {
 			}
 		}
 
-		var resolve
-		var promise = new Promise(function (rs) {
-			resolve = rs
-		})
 		waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
-			if (bp.error) {
-				cb(bp.error, undefined, 0)
-				resolve([0, undefined, bp.error])
-				return
-			}
+			if (bp.error) return cb(bp.error, undefined, 0)
 			dosendXMLRequest(bp.request, function (err, body, code) {
 				waterfall(
 					req.afterhooks.slice(),
@@ -231,16 +223,13 @@ function newRequest () {
 						try {
 							var body = req.parse(param.body)
 							cb(param.err, body, param.code)
-							resolve([param.code, body, param.err])
 						} catch (err) {
 							cb(err, undefined, 0)
-							resolve([0, undefined, err])
 						}
 					}
 				)
 			})
 		})
-		return promise
 	}
 	return r
 }
