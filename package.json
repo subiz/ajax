@@ -15,10 +15,10 @@
 	"license": "MIT",
 	"homepage": "https://github.com/subiz/ajax#readme",
 	"devDependencies": {
-		"webpack-cli": "^3.3.8",
-		"node-fetch": "^2.6.0",
 		"tape": "^4.11.0",
 		"uglifyjs-webpack-plugin": "^2.2.0",
-		"webpack": "^4.39.3"
+		"webpack": "^4.39.3",
+		"webpack-cli": "^3.3.8",
+		"xmlhttprequest": "^1.8.0"
 	}
 }
