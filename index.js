@@ -1,5 +1,5 @@
 'use strict'
 var ajax = require('./src/ajax.js')
-ajax.env.fetch = window.fetch
+ajax.env.XMLHttpRequest = window.XMLHttpRequest
 ajax.env.window = window
 module.exports = ajax

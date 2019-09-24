@@ -196,6 +196,11 @@ function newRequest () {
 	}
 
 	r.send = function (data, cb) {
+		if (isFunc(data)) {
+			cb = data
+			data = undefined
+		}
+
 		var req = this
 		if (data) {
 			req = this.clone()
@@ -208,27 +213,31 @@ function newRequest () {
 			}
 		}
 
-
-		cb = cb || function() {}
 		var resolve
-		var promise = new Promise(rs => {resolve = rs})
+		var promise = new Promise(function (rs) {
+			resolve = rs
+		})
 		waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
 			if (bp.error) {
 				cb(bp.error, undefined, 0)
 				resolve([0, undefined, bp.error])
 				return
 			}
-			dosend(bp.request, function(err, body, code){
-				waterfall(req.afterhooks.slice(), {request: req,code: code,body: body,err: err}, function(param) {
-					try {
-						var body = req.parse(param.body)
-						cb(param.err, body, param.code)
-						resolve([param.code, body, param.err])
-					} catch (err) {
-						cb(err, undefined, 0)
-						resolve( [0, undefined, err])
+			dosendXMLRequest(bp.request, function (err, body, code) {
+				waterfall(
+					req.afterhooks.slice(),
+					{ request: req, code: code, body: body, err: err },
+					function (param) {
+						try {
+							var body = req.parse(param.body)
+							cb(param.err, body, param.code)
+							resolve([param.code, body, param.err])
+						} catch (err) {
+							cb(err, undefined, 0)
+							resolve([0, undefined, err])
+						}
 					}
-				})
+				)
 			})
 		})
 		return promise
@@ -244,27 +253,25 @@ function getUrl (base, path) {
 	return base + path
 }
 
-var dosend = function (req, cb) {
-	if (req.content_type) {
-		req.headers = Object.assign({}, req.headers)
-		req.headers[CONTENT_TYPE] = req.content_type
-	}
-	var resp
+var dosendXMLRequest = function (req, cb) {
 	var q = querystring.stringify(req.query)
 	if (q) q = '?' + q
 	var url = getUrl(req.base, req.path) + q
-	env.fetch.
-		bind(env.window)(url, req).
-		then(function (r) {
-			resp = r
-			return resp.text()
-		}).
-		then(function (body) {
-			cb(undefined, body, resp.status)
-		}).
-		catch(function (err) {
-			cb(err, undefined, 0)
-		})
+
+	cb = cb || function () {}
+
+	var request = new env.XMLHttpRequest()
+	request.onreadystatechange = e => {
+		if (request.readyState !== 4) return
+		cb(undefined, request.responseText, request.status)
+	}
+
+	request.open(req.method, url)
+	for (var i in req.headers) request.setRequestHeader(i, req.headers[i])
+	if (req.content_type) {
+		request.setRequestHeader(CONTENT_TYPE, req.content_type)
+	}
+	request.send(req.body)
 }
 
 function norm (str) {
@@ -276,7 +283,7 @@ function asis (data) {
 }
 
 var env = {
-	fetch: {},
+	XMLHttpRequest: {},
 	window: {},
 }
 
@@ -288,35 +295,20 @@ module.exports = {
 	env: env,
 	get: get,
 	put: put,
-	waterfall: waterfall
-};
-
-function isFunc(f) {
-	return f && {}.toString.call(f) === "[object Function]"
+	waterfall: waterfall,
 }
 
-function waterfall(ps, param, cb) {
-	if (!ps || ps.length === 0) {
-		cb(param);
-		return Promise.resolve(param)
-	}
+function isFunc (f) {
+	return f && {}.toString.call(f) === '[object Function]'
+}
+
+function waterfall (ps, param, cb) {
+	if (!ps || ps.length === 0) return cb(param)
 
 	var fp = ps.shift()
 	if (!isFunc(fp)) return waterfall(ps, param, cb)
-	if (fp.length < 2) {
-		var out = fp(param)
-		if (out && out.then) {
-			return out.then(function() {
-				return param.stop ? Promise.resolve(param) : waterfall(ps, param, cb)
-			})
-		} else
-			return param.stop ? Promise.resolve(param) : waterfall(ps, param, cb)
-	}
-	// callback
-	fp(param, out => {
-		if (param.stop) {
-			cb(param)
-			return Promise.resolve(param)
-		} else return waterfall(ps, param, cb)
+	fp(param, function (out) {
+		if (out === false) return cb(param)
+		else return waterfall(ps, param, cb)
 	})
 }
