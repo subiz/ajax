@@ -250,7 +250,7 @@ var dosendXMLRequest = function (req, cb) {
 	cb = cb || function () {}
 
 	var request = new env.XMLHttpRequest()
-	request.onreadystatechange = e => {
+	request.onreadystatechange = function (e) {
 		if (request.readyState !== 4) return
 		cb(undefined, request.responseText, request.status)
 	}
