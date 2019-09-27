@@ -3,6 +3,18 @@ var ajax = require('./ajax.js')
 var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest
 ajax.env.XMLHttpRequest = XMLHttpRequest
 
+test('call cb multiple time', t => {
+	 var flow = 0
+	ajax.get('https://httpstat.us/200').send(undefined, () => {
+		flow++
+		throw new Error('sample err')
+	})
+	setTimeout(() => {
+		t.equal(flow, 1)
+		t.end()
+	}, 3000)
+})
+
 test('waterfall', t => {
 	ajax.waterfall(
 		[

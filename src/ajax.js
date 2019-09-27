@@ -47,7 +47,6 @@ function newRequest () {
 		afterhooks: [],
 		base: '',
 		path: '',
-		credentials: 'include',
 		query: {},
 		meta: {},
 	}
@@ -73,14 +72,6 @@ function newRequest () {
 
 	r.setQuery = function (query) {
 		return merge(this, { query: query })
-	}
-
-	r.setMode = function (mode) {
-		return merge(this, { mode: mode })
-	}
-
-	r.setCredentials = function (credentials) {
-		return merge(this, { credentials: credentials })
 	}
 
 	r.clearHooks = function () {
@@ -219,12 +210,15 @@ function newRequest () {
 					req.afterhooks.slice(),
 					{ request: req, code: code, body: body, err: err },
 					function (param) {
+						var body
 						try {
-							var body = req.parse(param.body)
-							cb(param.err, body, param.code)
+							body = req.parse(param.body)
 						} catch (err) {
-							cb(err, undefined, 0)
+							param.err = err
 						}
+						try {
+							cb(param.err, body, param.code)
+						} catch (_) {}
 					}
 				)
 			})
@@ -270,21 +264,7 @@ function asis (data) {
 	return data
 }
 
-var env = {
-	XMLHttpRequest: {},
-	window: {},
-}
-
-module.exports = {
-	post: post,
-	del: del,
-	head: head,
-	patch: patch,
-	env: env,
-	get: get,
-	put: put,
-	waterfall: waterfall,
-}
+var env = { XMLHttpRequest: {} }
 
 function isFunc (f) {
 	return f && {}.toString.call(f) === '[object Function]'
@@ -299,4 +279,15 @@ function waterfall (ps, param, cb) {
 		if (out === false) return cb(param)
 		else return waterfall(ps, param, cb)
 	})
+}
+
+module.exports = {
+	post: post,
+	del: del,
+	head: head,
+	patch: patch,
+	env: env,
+	get: get,
+	put: put,
+	waterfall: waterfall,
 }
