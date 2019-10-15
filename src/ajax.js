@@ -1,28 +1,9 @@
 var querystring = require('./querystring.js')
 
-function get (base, path, root) {
-	return init(root, 'GET', base, path)
-}
-
-function post (base, path, root) {
-	return init(root, 'POST', base, path)
-}
-
-function del (base, path, root) {
-	return init(root, 'DELETE', base, path)
-}
-
-function patch (base, path, root) {
-	return init(root, 'PATCH', base, path)
-}
-
-function head (base, path, root) {
-	return init(root, 'HEAD', base, path)
-}
-
-function put (base, path, root) {
-	return init(root, 'PUT', base, path)
-}
+var METHODS = ['put', 'head', 'patch', 'delete', 'post', 'get']
+var CONTENT_TYPE = 'Content-Type'
+var CONTENT_TYPE_FORM = 'application/x-www-form-urlencoded'
+var CONTENT_TYPE_JSON = 'application/json; charset=utf-8'
 
 function init (root, method, base, path) {
 	var req = root ? root.clone() : newRequest()
@@ -35,10 +16,6 @@ function init (root, method, base, path) {
 function merge (req, obj) {
 	return Object.assign(req, obj)
 }
-
-var CONTENT_TYPE = 'Content-Type'
-var CONTENT_TYPE_FORM = 'application/x-www-form-urlencoded'
-var CONTENT_TYPE_JSON = 'application/json; charset=utf-8'
 
 function newRequest () {
 	var r = {
@@ -109,29 +86,11 @@ function newRequest () {
 		return req
 	}
 
-	r.put = function (base, path) {
-		return put(base, path, this)
-	}
-
-	r.head = function (base, path) {
-		return head(base, path, this)
-	}
-
-	r.patch = function (base, path) {
-		return patch(base, path, this)
-	}
-
-	r.del = function (base, path) {
-		return del(base, path, this)
-	}
-
-	r.post = function (base, path) {
-		return post(base, path, this)
-	}
-
-	r.get = function (base, path) {
-		return get(base, path, this)
-	}
+	METHODS.map(function (method) {
+		r[method] = function (base, path) {
+			return init(this, method, base, path)
+		}
+	})
 
 	r.setMethod = function (method) {
 		var req = this.clone()
@@ -248,6 +207,11 @@ var dosend = function (req, cb) {
 		cb(undefined, request.responseText, request.status)
 	}
 
+	request.onerror = function () {
+		cb(request.responseText)
+		cb = function () {} // dont call cb anymore
+	}
+
 	request.open(req.method, url)
 	for (var i in req.headers) request.setRequestHeader(i, req.headers[i])
 	if (req.content_type) {
@@ -282,12 +246,12 @@ function waterfall (ps, param, cb) {
 }
 
 module.exports = {
-	post: post,
-	del: del,
-	head: head,
-	patch: patch,
 	env: env,
-	get: get,
-	put: put,
 	waterfall: waterfall,
 }
+
+METHODS.map(function (method) {
+	module.exports[method] = function (base, path, root) {
+		return init(root, method, base, path)
+	}
+})
