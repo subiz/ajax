@@ -209,7 +209,7 @@ var dosend = function (req, cb) {
 	}
 
 	request.onerror = function () {
-		cb(request.responseText)
+		cb('network_error', request.responseText)
 		cb = function () {} // dont call cb anymore
 	}
 
