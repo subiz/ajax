@@ -145,6 +145,7 @@ function newRequest () {
 	}
 
 	r.send = function (data, cb) {
+		cb = cb || function () {}
 		if (isFunc(data)) {
 			cb = data
 			data = undefined
