@@ -200,17 +200,16 @@ var dosend = function (req, cb) {
 	if (q) q = '?' + q
 	var url = getUrl(req.base, req.path) + q
 
-	cb = cb || function () {}
-
 	var request = new env.XMLHttpRequest()
 	request.onreadystatechange = function (e) {
 		if (request.readyState !== 4) return
-		cb(undefined, request.responseText, request.status)
+		cb && cb(undefined, request.responseText, request.status)
+		cb = undefined // dont call cb anymore
 	}
 
 	request.onerror = function () {
-		cb('network_error', request.responseText)
-		cb = function () {} // dont call cb anymore
+		cb && cb('network_error', request.responseText)
+		cb = undefined // dont call cb anymore
 	}
 
 	request.open(req.method, url)
