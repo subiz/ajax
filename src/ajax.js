@@ -145,6 +145,10 @@ function newRequest () {
 	}
 
 	r.send = function (data, cb) {
+		var rs
+		var promise = new Promise(function (resolve) {
+			rs = resolve
+		})
 		cb = cb || function () {}
 		if (isFunc(data)) {
 			cb = data
@@ -164,7 +168,11 @@ function newRequest () {
 		}
 
 		waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
-			if (bp.error) return cb(bp.error, undefined, 0)
+			if (bp.error) {
+				rs([undefined, 0, bp.error])
+				return cb(bp.error, undefined, 0)
+			}
+
 			dosend(bp.request, function (err, body, code) {
 				waterfall(
 					req.afterhooks.slice(),
@@ -177,12 +185,14 @@ function newRequest () {
 							param.err = err
 						}
 						try {
+							rs([body, param.code, param.err])
 							cb(param.err, body, param.code)
 						} catch (_) {}
 					}
 				)
 			})
 		})
+		return promise
 	}
 	return r
 }
