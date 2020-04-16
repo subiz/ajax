@@ -21,31 +21,18 @@ fetch api wrapper
 ```
 const ajax = require('@subiz/ajax')
 
-// try to making GET https://app.subiz.net/v4/ping
+// try to making GET https://httpstat.us/200
 
-let req = new ajax.newRequest()
-  .setBase("https://app.subiz.net/v4/")
-  .setPath("ping")
-  .setMethod("GET")
-
-// or shorter
-
-let req = new ajax.get("https://app.subiz.net/v4/", "ping")
+let res = await ajax.get("https://httpstat.us/200")
+console.log(req.body, res.code, res.error) // "200, OK" 200 undefined
 
 ```
 
 ### Derived from old object
 ```
-req = req.post(undefined, "ping")
-// POST https://app.subiz.net/v4/ping
-
-// send get request to https://app.subiz.net/v4/ping
-let [code,body, err] = await req.setPath("ping").send()
-// [200, '{"message":"pong from dashboard backend"}', undefined]
-
-// tell Ajax to parse json for us
-[code, body, err] = await req.setPath("ping").setParser("json").send()
-// [200, {message: "ping from dashboard backend"}, undefined
+var req = ajax.setBaseUrl("https://httpstat.us")
+res = await req.post("200")
+// POST https://httpstat.us/200
 
 ```
 ## References
@@ -80,8 +67,8 @@ create a new derived object by removing all before hooks and after hooks
 #### `afterHook(promise)`
 create a new derived object by registering (appending) a hook
 
-#### `setPath(path)`
-create a new derived object by changing old request path. New request url will be compose from `base` and `path`.
+#### `setBaseUrl(url)`
+create a new derived object by changing old request base url. New derived request with relative url will be append to this base url.
 
 #### `setHeader(header)`
 create a new derived object by merging old header with new header
@@ -93,13 +80,13 @@ examples:
 ```js
 req = req.setHeader({"x-real-ip": "193.155.45.3"})
 ```
-#### `get(base, path)`
-#### `post(base, path)`
-#### `put(base, path)`
-#### `del(base, path)`
-#### `head(base, path)`
-#### `patch(base, path)`
-#### `setBase`
+#### `get(url, data, cb)`
+#### `post(url, data, cb)`
+#### `put(url, data, cb)`
+#### `del(url, data, cb)`
+#### `head(url, data, cb)`
+#### `patch(url, data, cb)`
+#### `setBaseUrl`
 #### `setMethod`
 #### `contentTypeJson`
 #### `contentTypeForm`
@@ -110,13 +97,12 @@ req = req.setHeader({"x-real-ip": "193.155.45.3"})
 
 ### Ajax object (singleton)
 Ajax object is lets you create request object. Available requests:
-+ `newRequest()`: // create new empty request
-+ `get([base, path])`: // create new GET request to address (base+path)
-+ `post([base, path])`: // create new POST request to address (base+path)
-+ `put([base, path])`: // create new PUT request to address (base+path)
-+ `del([base, path])`: // create new DELETE request to address (base+path)
-+ `head([base, path])`: // create new HEAD request to address (base+path)
-+ `patch([base, path])`: // create new PATCH request to address (base+path)
++ `get(url)`: // create new GET request to address
++ `post(url)`: // create new POST request to address
++ `put(url)`: // create new PUT request to address
++ `del(url)`: // create new DELETE request to address
++ `head(url)`: // create new HEAD request to address
++ `patch(url)`: // create new PATCH request to address
 
 ### Before hook
 *before hooks* let you modify the request right before sending it.
@@ -124,7 +110,7 @@ You register a *before hook* by calling `beforeHook`. beforeHook function return
 
 for examples: to add query `?a=5` and `?b=6` right before sending the request
 ```js
-let req = ajax.get("https://google.com")
+let req = ajax.setBaseUrl("https://google.com")
 
 req = req.beforeHook(async param => {
   param.request = param.request.addQuery('a', 5)
@@ -132,7 +118,7 @@ req = req.beforeHook(async param => {
   param.request = param.request.addQuery('b', 6)
 })
 
-await req.send() // https://google.com?a=5&b=6
+await req.get() // https://google.com?a=5&b=6
 ```
 
 before hook is called one by one in registered order, which hook registered first will be called
@@ -140,16 +126,15 @@ first.
 
 ### With after hook
 ```
-const apireq = new ajax.Request()
-  .setBase("https://appv4.subiz.com/4.0/")
-  .setMethod("GET")
+const apireq = ajax
+  .setBaseUrl("https://appv4.subiz.com/4.0/")
   .afterHook(param => {
 		if (param.code !== 500) return
 		var retry = param.request.meta.retry || 0
 		if (retry === 3) return
 		var req = param.request.setMeta('retry', retry + 1) // increase number of attempt
 		// continue retry
-		return req.send().then(out => {
+		return req.get().then(out => {
 			var [code, body, err] = out
 			param.code = code
 			param.body = body
@@ -158,7 +143,7 @@ const apireq = new ajax.Request()
 	})
 })
 
-let [code, body, err] = await apireq.setPath("me").send()
+let [code, body, err] = await apireq.get("me")
 
 ```
 
