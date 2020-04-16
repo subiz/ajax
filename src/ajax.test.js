@@ -4,8 +4,8 @@ var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest
 ajax.env.XMLHttpRequest = XMLHttpRequest
 
 test('call cb multiple time', t => {
-	 var flow = 0
-	ajax.get('https://httpstat.us/200').send(undefined, () => {
+	var flow = 0
+	ajax.get('https://httpstat.us/200', () => {
 		flow++
 		throw new Error('sample err')
 	})
@@ -38,7 +38,7 @@ test('waterfall', t => {
 })
 
 test('get 200', t => {
-	ajax.get('https://httpstat.us/200').send(undefined, (err, body, code) => {
+	ajax.get('https://httpstat.us/200', (err, body, code) => {
 		t.equal(err, undefined)
 		t.equal(body, '200 OK')
 		t.equal(code, 200)
@@ -48,7 +48,7 @@ test('get 200', t => {
 
 test('get 404', t => {
 	ajax.env.XMLHttpRequest = XMLHttpRequest
-	ajax.get('https://httpstat.us/404').send(undefined, (err, body, code) => {
+	ajax.get('https://httpstat.us/404', (err, body, code) => {
 		t.equal(err, undefined)
 		t.equal(body, '404 Not Found')
 		t.equal(code, 404)
@@ -58,7 +58,7 @@ test('get 404', t => {
 
 test('get 500', t => {
 	ajax.env.XMLHttpRequest = XMLHttpRequest
-	ajax.get('https://httpstat.us/500').send(undefined, (err, body, code) => {
+	ajax.get('https://httpstat.us/500', undefined, (err, body, code) => {
 		t.equal(err, undefined)
 		t.equal(body, '500 Internal Server Error')
 		t.equal(code, 500)
@@ -69,10 +69,9 @@ test('get 500', t => {
 test('post JSON 200', t => {
 	ajax.env.XMLHttpRequest = XMLHttpRequest
 	ajax.
-		post('https://httpbin.org/anything').
 		contentTypeJson().
 		setParser('json').
-		send({ a: 5, b: 6 }, (err, body, code) => {
+		post('https://httpbin.org/anything', { a: 5, b: 6 }, (err, body, code) => {
 			t.equal(err, undefined)
 			t.equal(body.json.a, 5)
 			t.equal(body.json.b, 6)
@@ -83,7 +82,6 @@ test('post JSON 200', t => {
 
 test('before hook error', t => {
 	ajax.
-		get().
 		beforeHook((param, cb) => {
 			param.request = param.request.addQuery('a', 'xinchao')
 			cb()
@@ -92,9 +90,8 @@ test('before hook error', t => {
 			param.error = 'just an sample error'
 			cb(false)
 		}).
-		get('https://postman-echo.com/get').
 		setParser('json').
-		send((err, body, code) => {
+		get('https://postman-echo.com/get', (err, body, code) => {
 			t.equal(code, 0)
 			t.equal(err, 'just an sample error')
 			t.equal(body, undefined)
@@ -104,7 +101,6 @@ test('before hook error', t => {
 
 test('before hook', t => {
 	ajax.
-		get().
 		beforeHook((param, cb) => {
 			param.request = param.request.addQuery('a', 'xinchao')
 			cb()
@@ -116,9 +112,8 @@ test('before hook', t => {
 			param.request = param.request.addQuery('b', 6)
 			cb()
 		}).
-		get('https://postman-echo.com/get').
 		setParser('json').
-		send((err, body, code) => {
+		get('https://postman-echo.com/get', (err, body, code) => {
 			t.equal(code, 200)
 			t.equal(err, undefined)
 			t.equal(body.args.a, 'xinchao')
@@ -130,14 +125,13 @@ test('before hook', t => {
 test('after hook retry fail', t => {
 	var count = 0
 	let req = ajax.
-		get().
 		afterHook((param, cb) => {
 			if (param.code !== 500) return cb()
 			count++
 			var retry = param.request.meta.retry || 0
 			if (retry === 3) return cb()
 			var req = param.request.setMeta('retry', retry + 1) // increase counter
-			req.send(undefined, (err, body, code) => {
+			req[req.method]('', (err, body, code) => {
 				// continue retry
 				param.code = code
 				param.body = body
@@ -145,8 +139,7 @@ test('after hook retry fail', t => {
 				cb()
 			})
 		}).
-		get('https://httpstat.us/500').
-		send((err, body, code) => {
+		get('https://httpstat.us/500', (err, body, code) => {
 			t.equal(count, 4)
 			t.equal(code, 500)
 			t.equal(body, '500 Internal Server Error')
@@ -158,26 +151,24 @@ test('after hook retry fail', t => {
 test('after hook retry success', t => {
 	var count = 0
 	let req = ajax.
-		get().
 		afterHook((param, cb) => {
 			if (param.code !== 500) return cb()
 			count++
 			var retry = param.request.meta.retry || 0
 			if (retry === 2) {
-				param.request = param.request.get('https://httpstat.us/200')
+				param.request = param.request.setBaseUrl('https://httpstat.us/200')
 			}
 			if (retry === 3) return cb() // give up
 			var req = param.request.setMeta('retry', retry + 1) // increase counter
 			// continue retry
-			req.send(undefined, (err, body, code) => {
+			req[req.method]('', (err, body, code) => {
 				param.code = code
 				param.body = body
 				param.err = err
 				cb()
 			})
 		}).
-		get('https://httpstat.us/500').
-		send(undefined, (err, body, code) => {
+		get('https://httpstat.us/500', (err, body, code) => {
 			t.equal(count, 3)
 			t.equal(code, 200)
 			t.equal(body, '200 OK')

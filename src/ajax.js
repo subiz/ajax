@@ -5,16 +5,26 @@ var CONTENT_TYPE = 'Content-Type'
 var CONTENT_TYPE_FORM = 'application/x-www-form-urlencoded'
 var CONTENT_TYPE_JSON = 'application/json; charset=utf-8'
 
-function init (root, method, base, path) {
-	var req = root ? root.clone() : newRequest()
-	req.method = method
-	if (base) req.base = norm(base)
-	if (path) req.path = norm(path)
-	return req
+function combineUrl (base, newurl) {
+	base = norm(base)
+	newurl = norm(newurl)
+
+	if (!newurl || !base) return base + newurl
+
+	if (
+		newurl.startsWith('http://') ||
+		newurl.startsWith('https://') ||
+		newurl.startsWith('//')
+	) {
+		return newurl
+	}
+	if (!base.endsWith('/')) base += '/'
+	if (newurl.startsWith('/')) newurl = newurl.substring(1)
+	return base + newurl
 }
 
 function merge (req, obj) {
-	return Object.assign(req, obj)
+	return Object.assign(req.clone(), obj)
 }
 
 function newRequest () {
@@ -22,16 +32,15 @@ function newRequest () {
 		parse: asis,
 		beforehooks: [],
 		afterhooks: [],
-		base: '',
-		path: '',
+		baseurl: '',
 		query: {},
 		meta: {},
 	}
 
 	r.clone = function () {
 		return Object.assign({}, this, {
-			query: merge({}, this.query),
-			meta: merge({}, this.meta),
+			query: Object.assign({}, this.query),
+			meta: Object.assign({}, this.meta),
 		})
 	}
 
@@ -73,12 +82,6 @@ function newRequest () {
 		return req
 	}
 
-	r.setPath = function (newpath) {
-		var req = this.clone()
-		req.path = norm(newpath)
-		return req
-	}
-
 	r.setHeader = function (headers) {
 		var req = this.clone()
 		req.headers = Object.assign({}, this.headers, headers)
@@ -87,21 +90,18 @@ function newRequest () {
 	}
 
 	METHODS.map(function (method) {
-		r[method] = function (base, path) {
-			return init(this, method, base, path)
+		r[method] = function (url, data, cb) {
+			send(
+				merge(this, { method: method, baseurl: combineUrl(this.baseurl, url) }),
+				data,
+				cb
+			)
 		}
 	})
 
-	r.setMethod = function (method) {
-		var req = this.clone()
-		req.method = norm(method)
-		return req
-	}
-
-	r.setBase = function (base) {
-		var req = this.clone()
-		req.base = norm(base)
-		return req
+	// pass // to clean
+	r.setBaseUrl = function (url) {
+		return merge(this, { baseurl: url })
 	}
 
 	r.contentTypeJson = function () {
@@ -144,71 +144,63 @@ function newRequest () {
 		return req
 	}
 
-	r.send = function (data, cb) {
-		var rs
-		var promise = new Promise(function (resolve) {
-			rs = resolve
-		})
-		cb = cb || function () {}
-		if (isFunc(data)) {
-			cb = data
-			data = undefined
-		}
-
-		var req = this
-		if (data) {
-			req = this.clone()
-			if (this.content_type === CONTENT_TYPE_JSON) {
-				req.body = JSON.stringify(data)
-			} else if (this.content_type === CONTENT_TYPE_FORM) {
-				req.body = querystring.stringify(data)
-			} else {
-				req.body = data
-			}
-		}
-
-		waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
-			if (bp.error) {
-				rs([undefined, 0, bp.error])
-				return cb(bp.error, undefined, 0)
-			}
-
-			dosend(bp.request, function (err, body, code) {
-				waterfall(
-					req.afterhooks.slice(),
-					{ request: req, code: code, body: body, err: err },
-					function (param) {
-						var body
-						try {
-							body = req.parse(param.body)
-						} catch (err) {
-							param.err = err
-						}
-						try {
-							rs([body, param.code, param.err])
-							cb(param.err, body, param.code)
-						} catch (_) {}
-					}
-				)
-			})
-		})
-		return promise
-	}
 	return r
 }
 
-function getUrl (base, path) {
-	if (!path || !base) return base + path
+function send (req, data, cb) {
+	var rs
+	var promise = new Promise(function (resolve) {
+		rs = resolve
+	})
+	cb = cb || function () {}
+	if (isFunc(data)) {
+		cb = data
+		data = undefined
+	}
 
-	if (!base.endsWith('/')) base += '/'
-	if (path.startsWith('/')) path = path.substring(1)
-	return base + path
+	if (data) {
+		req = req.clone()
+		if (req.content_type === CONTENT_TYPE_JSON) {
+			req.body = JSON.stringify(data)
+		} else if (req.content_type === CONTENT_TYPE_FORM) {
+			req.body = querystring.stringify(data)
+		} else {
+			req.body = data
+		}
+	}
+
+	waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
+		if (bp.error) {
+			rs({ body: undefined, code: 0, error: bp.error })
+			return cb(bp.error, undefined, 0)
+		}
+
+		dosend(bp.request, function (err, body, code) {
+			waterfall(
+				req.afterhooks.slice(),
+				{ request: req, code: code, body: body, err: err },
+				function (param) {
+					var body
+					try {
+						body = req.parse(param.body)
+					} catch (err) {
+						param.err = err
+					}
+					try {
+						rs({ body: body, code: param.code, error: param.err })
+						cb(param.err, body, param.code)
+					} catch (_) {}
+				}
+			)
+		})
+	})
+	return promise
 }
 
 var dosend = function (req, cb) {
+
 	var q = querystring.stringify(req.query)
 	if (q) q = '?' + q
-	var url = getUrl(req.base, req.path) + q
 
 	var request = new env.XMLHttpRequest()
 	request.onreadystatechange = function (e) {
@@ -221,8 +213,8 @@ var dosend = function (req, cb) {
 		cb && cb('network_error', request.responseText)
 		cb = undefined // dont call cb anymore
 	}
-
-	request.open(req.method, url)
+	console.log("SENDING", req.baseurl + q)
+	request.open(req.method, req.baseurl + q)
 	for (var i in req.headers) request.setRequestHeader(i, req.headers[i])
 	if (req.content_type) {
 		request.setRequestHeader(CONTENT_TYPE, req.content_type)
@@ -255,13 +247,7 @@ function waterfall (ps, param, cb) {
 	})
 }
 
-module.exports = {
-	env: env,
-	waterfall: waterfall,
-}
-
-METHODS.map(function (method) {
-	module.exports[method] = function (base, path, root) {
-		return init(root, method, base, path)
-	}
-})
+var ajax = newRequest()
+ajax.env = env
+ajax.waterfall = waterfall
+module.exports = ajax
