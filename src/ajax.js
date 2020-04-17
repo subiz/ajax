@@ -1,4 +1,4 @@
-var querystring = require('./querystring.js')
+var qs = require('./querystring.js')
 
 var METHODS = ['put', 'head', 'patch', 'delete', 'post', 'get']
 var CONTENT_TYPE = 'Content-Type'
@@ -18,6 +18,7 @@ function combineUrl (base, newurl) {
 	) {
 		return newurl
 	}
+
 	if (!base.endsWith('/')) base += '/'
 	if (newurl.startsWith('/')) newurl = newurl.substring(1)
 	return base + newurl
@@ -29,7 +30,7 @@ function merge (req, obj) {
 
 function newRequest () {
 	var r = {
-		parse: asis,
+		parser: '',
 		beforehooks: [],
 		afterhooks: [],
 		baseurl: '',
@@ -61,37 +62,30 @@ function newRequest () {
 	}
 
 	r.clearHooks = function () {
-		var req = this.clone({ nohook: true })
-		req.hooks = []
-		req.beforehooks = []
-		req.afterhooks = []
-		return req
+		return merge(this, { beforehooks: [], afterhooks: [] })
 	}
 
 	r.beforeHook = function (cb) {
-		var req = this.clone()
-		req.beforehooks = req.beforehooks.slice()
-		req.beforehooks.push(cb)
-		return req
+		var beforehooks = this.beforehooks.slice()
+		beforehooks.push(cb)
+		return merge(this, { beforehooks: beforehooks })
 	}
 
 	r.afterHook = function (cb) {
-		var req = this.clone()
-		req.afterhooks = req.afterhooks.slice()
-		req.afterhooks.push(cb)
-		return req
+		var afterhooks = this.afterhooks.slice()
+		afterhooks.push(cb)
+		return merge(this, { afterhooks: afterhooks })
 	}
 
 	r.setHeader = function (headers) {
-		var req = this.clone()
-		req.headers = Object.assign({}, this.headers, headers)
-		req.headers[CONTENT_TYPE] = undefined
-		return req
+		headers = Object.assign({}, this.headers, headers)
+		headers[CONTENT_TYPE] = undefined
+		return merge(this, { headers: headers })
 	}
 
 	METHODS.map(function (method) {
 		r[method] = function (url, data, cb) {
-			send(
+			return send(
 				merge(this, { method: method, baseurl: combineUrl(this.baseurl, url) }),
 				data,
 				cb
@@ -117,25 +111,11 @@ function newRequest () {
 	}
 
 	r.setParser = function (parser) {
-		var req = this.clone()
-		switch (norm(parser)) {
-		case 'json':
-			req.parse = function (data) {
-				if (data === undefined) return
-				return JSON.parse(data)
-			}
-			break
-		default:
-			req.parse = asis
-			break
-		}
-		return req
+		return merge(this, { parser: norm(parser) })
 	}
 
 	r.setBody = function (body) {
-		var req = this.clone()
-		req.body = body
-		return req
+		return merge(this, { body: body })
 	}
 
 	r.setMeta = function (k, v) {
@@ -148,48 +128,43 @@ function newRequest () {
 }
 
 function send (req, data, cb) {
-	var rs
-	var promise = new Promise(function (resolve) {
-		rs = resolve
-	})
 	cb = cb || function () {}
 	if (isFunc(data)) {
 		cb = data
 		data = undefined
 	}
 
+	var rs
+	var promise = new Promise(function (resolve) {
+		rs = function (res) {
+			try {
+				cb(res.error, res.body, res.code)
+			} catch (_) {}
+			resolve(res)
+		}
+	})
+
 	if (data) {
 		req = req.clone()
-		if (req.content_type === CONTENT_TYPE_JSON) {
-			req.body = JSON.stringify(data)
-		} else if (req.content_type === CONTENT_TYPE_FORM) {
-			req.body = querystring.stringify(data)
-		} else {
-			req.body = data
+		req.body = data
+		if (req.content_type === CONTENT_TYPE_JSON) req.body = env.Jsonify(data)
+		if (req.content_type === CONTENT_TYPE_FORM) {
+			req.body = qs.stringify(data)
 		}
 	}
 
 	waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
-		if (bp.error) {
-			rs({ body: undefined, code: 0, error: bp.error })
-			return cb(bp.error, undefined, 0)
-		}
-
+		if (bp.error) return rs({ body: undefined, code: 0, error: bp.error })
 		dosend(bp.request, function (err, body, code) {
 			waterfall(
 				req.afterhooks.slice(),
 				{ request: req, code: code, body: body, err: err },
 				function (param) {
-					var body
-					try {
-						body = req.parse(param.body)
-					} catch (err) {
-						param.err = err
+					var body = param.body
+					if (req.parser == 'json' && param.body !== undefined) {
+						body = env.ParseJson(param.body)
 					}
-					try {
-						rs({ body: body, code: param.code, error: param.err })
-						cb(param.err, body, param.code)
-					} catch (_) {}
+					rs({ body: body, code: param.code, error: param.err })
 				}
 			)
 		})
@@ -198,8 +173,7 @@ function send (req, data, cb) {
 }
 
 var dosend = function (req, cb) {
-
-	var q = querystring.stringify(req.query)
+	var q = qs.stringify(req.query)
 	if (q) q = '?' + q
 
 	var request = new env.XMLHttpRequest()
@@ -213,7 +187,7 @@ var dosend = function (req, cb) {
 		cb && cb('network_error', request.responseText)
 		cb = undefined // dont call cb anymore
 	}
-	console.log("SENDING", req.baseurl + q)
+
 	request.open(req.method, req.baseurl + q)
 	for (var i in req.headers) request.setRequestHeader(i, req.headers[i])
 	if (req.content_type) {
@@ -226,12 +200,6 @@ function norm (str) {
 	return (str || '').trim()
 }
 
-function asis (data) {
-	return data
-}
-
-var env = { XMLHttpRequest: {} }
-
 function isFunc (f) {
 	return f && {}.toString.call(f) === '[object Function]'
 }
@@ -242,12 +210,12 @@ function waterfall (ps, param, cb) {
 	var fp = ps.shift()
 	if (!isFunc(fp)) return waterfall(ps, param, cb)
 	fp(param, function (out) {
-		if (out === false) return cb(param)
-		else return waterfall(ps, param, cb)
+		return out === false ? cb(param) : waterfall(ps, param, cb)
 	})
 }
 
 var ajax = newRequest()
+var env = { XMLHttpRequest: {}, Jsonify: JSON.stringify, ParseJson: JSON.parse }
 ajax.env = env
 ajax.waterfall = waterfall
 module.exports = ajax
