@@ -162,7 +162,11 @@ function send (req, data, cb) {
 				function (param) {
 					var body = param.body
 					if (req.parser == 'json' && param.body !== undefined) {
-						body = env.ParseJson(param.body)
+						try {
+							body = env.ParseJson(param.body)
+						} catch (e) {
+							return rs({ error: e })
+						}
 					}
 					var err = param.err
 					if (code !== 200) err = 'not 200'
