@@ -11,11 +11,7 @@ function combineUrl (base, newurl) {
 
 	if (!newurl || !base) return base + newurl
 
-	if (
-		newurl.startsWith('http://') ||
-		newurl.startsWith('https://') ||
-		newurl.startsWith('//')
-	) {
+	if (newurl.startsWith('http://') || newurl.startsWith('https://') || newurl.startsWith('//')) {
 		return newurl
 	}
 
@@ -85,11 +81,7 @@ function newRequest () {
 
 	METHODS.map(function (method) {
 		r[method] = function (url, data, cb) {
-			return send(
-				merge(this, { method: method, baseurl: combineUrl(this.baseurl, url) }),
-				data,
-				cb
-			)
+			return send(merge(this, { method: method, baseurl: combineUrl(this.baseurl, url) }), data, cb)
 		}
 	})
 
@@ -156,23 +148,20 @@ function send (req, data, cb) {
 	waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
 		if (bp.error) return rs({ body: undefined, code: 0, error: bp.error })
 		dosend(bp.request, function (err, body, code) {
-			waterfall(
-				req.afterhooks.slice(),
-				{ request: req, code: code, body: body, err: err },
-				function (param) {
-					var body = param.body
-					if (req.parser == 'json' && param.body !== undefined) {
-						try {
-							body = env.ParseJson(param.body)
-						} catch (e) {
-							return rs({ error: e })
-						}
+			waterfall(req.afterhooks.slice(), { request: req, code: code, body: body, err: err }, function (param) {
+				var body = param.body
+
+				if (req.parser == 'json' && param.body) {
+					try {
+						body = env.ParseJson(param.body)
+					} catch (e) {
+						param.err = param.err || 'invalid json'
 					}
-					var err = param.err
-					if (code !== 200) err = 'not 200'
-					rs({ body: body, code: param.code, error: err })
 				}
-			)
+				var err = param.err
+				if (code !== 200) err = 'not 200'
+				rs({ body: body, code: param.code, error: err })
+			})
 		})
 	})
 	return promise
@@ -185,13 +174,11 @@ var dosend = function (req, cb) {
 	var request = new env.XMLHttpRequest()
 	request.onreadystatechange = function (e) {
 		if (request.readyState !== 4) return
-		cb && cb(undefined, request.responseText, request.status)
-		cb = undefined // dont call cb anymore
-	}
-
-	request.onerror = function () {
-		cb && cb('network_error', request.responseText)
-		cb = undefined // dont call cb anymore
+		if (request.status === 0) {
+			cb('network_error', request.responseText, request.status) // network error
+		} else {
+			cb(undefined, request.responseText, request.status)
+		}
 	}
 
 	request.open(req.method, req.baseurl + q)
