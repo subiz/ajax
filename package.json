@@ -1,6 +1,6 @@
 {
 	"name": "@subiz/ajax",
-	"version": "3.0.3",
+	"version": "3.0.4",
 	"description": "",
 	"main": "./dist/ajax.js",
 	"scripts": {
@@ -15,10 +15,10 @@
 	"license": "MIT",
 	"homepage": "https://github.com/subiz/ajax#readme",
 	"devDependencies": {
-		"tape": "^4.13.0",
+		"tape": "^5.0.1",
 		"uglifyjs-webpack-plugin": "^2.2.0",
-		"webpack": "^4.41.6",
-		"webpack-cli": "^3.3.11",
+		"webpack": "^4.44.1",
+		"webpack-cli": "^3.3.12",
 		"xmlhttprequest": "^1.8.0"
 	}
 }
