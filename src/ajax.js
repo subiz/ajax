@@ -58,7 +58,7 @@ function newRequest () {
 	}
 
 	r.withCredentials = function (credential) {
-		return merge(this, { withCredentials: credential })
+		return merge(this, { _withCredentials: credential })
 	}
 
 	r.setQuery = function (query) {
@@ -198,7 +198,7 @@ var dosend = function (req, cb) {
 	}
 
 	request.open(req.method, req.baseurl + q)
-	request.withCredentials = req.withCredentials // for cloudflare to work correctly
+	request.withCredentials = req._withCredentials // for cloudflare to work correctly
 	for (var i in req.headers) request.setRequestHeader(i, req.headers[i])
 	if (req.content_type) {
 		request.setRequestHeader(CONTENT_TYPE, req.content_type)
