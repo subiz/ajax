@@ -30,7 +30,6 @@ function newRequest() {
 		baseurl: '',
 		query: {},
 		meta: {},
-		isfetch: false,
 	}
 
 	r.clone = function() {
@@ -38,12 +37,6 @@ function newRequest() {
 			query: Object.assign({}, this.query),
 			meta: Object.assign({}, this.meta),
 		})
-	}
-
-	r.useFetch = function(use) {
-		var req = this.clone()
-		req.isFetch = !(use === false)
-		return req
 	}
 
 	r.addQuery = function(key, val) {
@@ -156,35 +149,27 @@ function send(req, data, cb) {
 
 	waterfall(req.beforehooks.slice(), {request: req}, function(bp) {
 		if (bp.error) return rs({body: undefined, code: 0, error: bp.error})
-		var send = dosend
-		if (req.isfetch) send = dofetch
-		send(
-			bp.request,
-			function(err, body, code) {
-				waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function(param) {
-					var body = param.body
+		dosend(bp.request, function(err, body, code) {
+			waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function(param) {
+				var body = param.body
 
-					if (req.parser == 'json' && param.body) {
-						try {
-							body = env.ParseJson(param.body)
-						} catch (e) {
-							param.err = param.err || 'invalid json'
-						}
+				if (req.parser == 'json' && param.body) {
+					try {
+						body = env.ParseJson(param.body)
+					} catch (e) {
+						param.err = param.err || 'invalid json'
 					}
-					var err = param.err
-					if (code < 200 || code > 299) err = 'not 200'
-					rs({body: body, code: param.code, error: err})
-				})
-			},
-			querify(req.query),
-		)
+				}
+				var err = param.err
+				if (code < 200 || code > 299) err = 'not 200'
+				rs({body: body, code: param.code, error: err})
+			})
+		})
 	})
 	return promise
 }
 
 var dofetch = function(req, cb, q) {
-	if (q) q = '?' + q
-
 	var headers = Object.assign({}, req.headers)
 	if (req.content_type) {
 		headers[CONTENT_TYPE] = req.content_type
@@ -200,9 +185,10 @@ var dofetch = function(req, cb, q) {
 		.catch((err) => cb('network_error', err, -1))
 }
 
-var dosend = function(req, cb, q) {
+var dosend = function(req, cb) {
+	let q = querify(req.query)
 	if (q) q = '?' + q
-
+	if (!env.XMLHttpRequest) return dofetch(req, cb, q)
 	var request = new env.XMLHttpRequest()
 	request.onreadystatechange = function(e) {
 		if (request.readyState !== 4) return
