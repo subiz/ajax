@@ -1,21 +1,15 @@
-var qs = require('./querystring.js')
-
 var METHODS = ['put', 'head', 'patch', 'delete', 'post', 'get']
 var CONTENT_TYPE = 'Content-Type'
 var CONTENT_TYPE_FORM = 'application/x-www-form-urlencoded'
 var CONTENT_TYPE_JSON = 'application/json; charset=utf-8'
 
-function combineUrl (base, newurl) {
+function combineUrl(base, newurl) {
 	base = norm(base)
 	newurl = norm(newurl)
 
 	if (!newurl || !base) return base + newurl
 
-	if (
-		newurl.startsWith('http://') ||
-		newurl.startsWith('https://') ||
-		newurl.startsWith('//')
-	) {
+	if (newurl.startsWith('http://') || newurl.startsWith('https://') || newurl.startsWith('//')) {
 		return newurl
 	}
 
@@ -24,11 +18,11 @@ function combineUrl (base, newurl) {
 	return base + newurl
 }
 
-function merge (req, obj) {
+function merge(req, obj) {
 	return Object.assign(req.clone(), obj)
 }
 
-function newRequest () {
+function newRequest() {
 	var r = {
 		parser: '',
 		beforehooks: [],
@@ -36,93 +30,96 @@ function newRequest () {
 		baseurl: '',
 		query: {},
 		meta: {},
+		isfetch: false,
 	}
 
-	r.clone = function () {
+	r.clone = function() {
 		return Object.assign({}, this, {
 			query: Object.assign({}, this.query),
 			meta: Object.assign({}, this.meta),
 		})
 	}
 
-	r.addQuery = function (key, val) {
+	r.useFetch = function(use) {
+		var req = this.clone()
+		req.isFetch = !(use === false)
+		return req
+	}
+
+	r.addQuery = function(key, val) {
 		var req = this.clone()
 		req.query[key] = val
 		return req
 	}
 
-	r.removeQuery = function (key) {
+	r.removeQuery = function(key) {
 		var req = this.clone()
 		if (req.query[key] !== undefined) req.query[key] = undefined
 		return req
 	}
 
-	r.withCredentials = function (credential) {
-		return merge(this, { _withCredentials: credential })
+	r.withCredentials = function(credential) {
+		return merge(this, {_withCredentials: credential})
 	}
 
-	r.setQuery = function (query) {
-		return merge(this, { query: query })
+	r.setQuery = function(query) {
+		return merge(this, {query: query})
 	}
 
-	r.clearHooks = function () {
-		return merge(this, { beforehooks: [], afterhooks: [] })
+	r.clearHooks = function() {
+		return merge(this, {beforehooks: [], afterhooks: []})
 	}
 
-	r.beforeHook = function (cb) {
+	r.beforeHook = function(cb) {
 		var beforehooks = this.beforehooks.slice()
 		beforehooks.push(cb)
-		return merge(this, { beforehooks: beforehooks })
+		return merge(this, {beforehooks: beforehooks})
 	}
 
-	r.afterHook = function (cb) {
+	r.afterHook = function(cb) {
 		var afterhooks = this.afterhooks.slice()
 		afterhooks.push(cb)
-		return merge(this, { afterhooks: afterhooks })
+		return merge(this, {afterhooks: afterhooks})
 	}
 
-	r.setHeader = function (headers) {
+	r.setHeader = function(headers) {
 		headers = Object.assign({}, this.headers, headers)
 		headers[CONTENT_TYPE] = undefined
-		return merge(this, { headers: headers })
+		return merge(this, {headers: headers})
 	}
 
-	METHODS.map(function (method) {
-		r[method] = function (url, data, cb) {
-			return send(
-				merge(this, { method: method, baseurl: combineUrl(this.baseurl, url) }),
-				data,
-				cb
-			)
+	METHODS.map(function(method) {
+		r[method] = function(url, data, cb) {
+			return send(merge(this, {method: method, baseurl: combineUrl(this.baseurl, url)}), data, cb)
 		}
 	})
 
 	// pass // to clean
-	r.setBaseUrl = function (url) {
-		return merge(this, { baseurl: url })
+	r.setBaseUrl = function(url) {
+		return merge(this, {baseurl: url})
 	}
 
-	r.contentTypeJson = function () {
-		return merge(this, { content_type: CONTENT_TYPE_JSON })
+	r.contentTypeJson = function() {
+		return merge(this, {content_type: CONTENT_TYPE_JSON})
 	}
 
-	r.contentTypeForm = function () {
-		return merge(this, { content_type: CONTENT_TYPE_FORM })
+	r.contentTypeForm = function() {
+		return merge(this, {content_type: CONTENT_TYPE_FORM})
 	}
 
-	r.setContentType = function (ty) {
-		return merge(this, { content_type: norm(ty) })
+	r.setContentType = function(ty) {
+		return merge(this, {content_type: norm(ty)})
 	}
 
-	r.setParser = function (parser) {
-		return merge(this, { parser: norm(parser) })
+	r.setParser = function(parser) {
+		return merge(this, {parser: norm(parser)})
 	}
 
-	r.setBody = function (body) {
-		return merge(this, { body: body })
+	r.setBody = function(body) {
+		return merge(this, {body: body})
 	}
 
-	r.setMeta = function (k, v) {
+	r.setMeta = function(k, v) {
 		var req = this.clone()
 		req.meta[k] = v
 		return req
@@ -131,16 +128,16 @@ function newRequest () {
 	return r
 }
 
-function send (req, data, cb) {
-	cb = cb || function () {}
+function send(req, data, cb) {
+	cb = cb || function() {}
 	if (isFunc(data)) {
 		cb = data
 		data = undefined
 	}
 
 	var rs
-	var promise = new Promise(function (resolve) {
-		rs = function (res) {
+	var promise = new Promise(function(resolve) {
+		rs = function(res) {
 			try {
 				cb(res.error, res.body, res.code)
 			} catch (_) {}
@@ -153,17 +150,18 @@ function send (req, data, cb) {
 		req.body = data
 		if (req.content_type === CONTENT_TYPE_JSON) req.body = env.Jsonify(data)
 		if (req.content_type === CONTENT_TYPE_FORM) {
-			req.body = qs.stringify(data)
+			req.body = querify(data)
 		}
 	}
 
-	waterfall(req.beforehooks.slice(), { request: req }, function (bp) {
-		if (bp.error) return rs({ body: undefined, code: 0, error: bp.error })
-		dosend(bp.request, function (err, body, code) {
-			waterfall(
-				req.afterhooks.slice(),
-				{ request: req, code: code, body: body, err: err },
-				function (param) {
+	waterfall(req.beforehooks.slice(), {request: req}, function(bp) {
+		if (bp.error) return rs({body: undefined, code: 0, error: bp.error})
+		var send = dosend
+		if (req.isfetch) send = dofetch
+		send(
+			bp.request,
+			function(err, body, code) {
+				waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function(param) {
 					var body = param.body
 
 					if (req.parser == 'json' && param.body) {
@@ -175,20 +173,38 @@ function send (req, data, cb) {
 					}
 					var err = param.err
 					if (code < 200 || code > 299) err = 'not 200'
-					rs({ body: body, code: param.code, error: err })
-				}
-			)
-		})
+					rs({body: body, code: param.code, error: err})
+				})
+			},
+			querify(req.query),
+		)
 	})
 	return promise
 }
 
-var dosend = function (req, cb) {
-	var q = qs.stringify(req.query)
+var dofetch = function(req, cb, q) {
+	if (q) q = '?' + q
+
+	var headers = Object.assign({}, req.headers)
+	if (req.content_type) {
+		headers[CONTENT_TYPE] = req.content_type
+	}
+
+	fetch(req.baseurl + q, {
+		method: req.method,
+		headers: headers,
+		credentials: req._withCredentials,
+		body: req.body,
+	})
+		.then((res) => res.text().then((text) => cb(undefined, text, res.status)))
+		.catch((err) => cb('network_error', err, -1))
+}
+
+var dosend = function(req, cb, q) {
 	if (q) q = '?' + q
 
 	var request = new env.XMLHttpRequest()
-	request.onreadystatechange = function (e) {
+	request.onreadystatechange = function(e) {
 		if (request.readyState !== 4) return
 		if (request.status === 0) {
 			cb('network_error', request.responseText, request.status) // network error
@@ -206,26 +222,70 @@ var dosend = function (req, cb) {
 	request.send(req.body)
 }
 
-function norm (str) {
+function norm(str) {
 	return (str || '').trim()
 }
 
-function isFunc (f) {
+function isFunc(f) {
 	return f && {}.toString.call(f) === '[object Function]'
 }
 
-function waterfall (ps, param, cb) {
+function waterfall(ps, param, cb) {
 	if (!ps || ps.length === 0) return cb(param)
 
 	var fp = ps.shift()
 	if (!isFunc(fp)) return waterfall(ps, param, cb)
-	fp(param, function (out) {
+	fp(param, function(out) {
 		return out === false ? cb(param) : waterfall(ps, param, cb)
 	})
 }
 
+// more stringent in adhering to RFC 3986 (which reserves !, ', (, ), and *), even
+// though these characters have no formalized URI delimiting uses, see
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
+// for more details
+function encodeURICom(str) {
+	return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
+		return '%' + c.charCodeAt(0).toString(16)
+	})
+}
+
+function querify(obj) {
+	if (!obj) return ''
+	var keys = Object.keys(obj)
+	//  keys.sort(options.sort)
+	var out = []
+	for (var k = 0; k < keys.length; k++) {
+		var key = keys[k]
+		var param = ''
+		var value = obj[key]
+		if (value === undefined) continue
+		if (value === null) {
+			param = encodeURICom(key)
+		} else if (!Array.isArray(value)) {
+			param = encodeURICom(key) + '=' + encodeURICom(value)
+		} else {
+			// array
+			var arr = []
+			for (var i = 0; i < value.length; i++) {
+				if (value[i] === undefined) continue
+				if (value[i] === null) out = encodeURICom(key)
+				else out = [encodeURICom(key), '=', encodeURICom(value[i])].join('')
+				arr.push(out)
+			}
+			param = arr.join('&')
+		}
+		if (param.length > 0) out.push(param)
+	}
+	return out.join('&')
+}
+
 var ajax = newRequest()
-var env = { XMLHttpRequest: {}, Jsonify: JSON.stringify, ParseJson: JSON.parse }
+var env = {
+	XMLHttpRequest: {},
+	Jsonify: JSON.stringify,
+	ParseJson: JSON.parse,
+}
 ajax.env = env
 ajax.waterfall = waterfall
 module.exports = ajax
