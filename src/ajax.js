@@ -255,8 +255,8 @@ function querify(obj) {
 			var arr = []
 			for (var i = 0; i < value.length; i++) {
 				if (value[i] === undefined) continue
-				if (value[i] === null) out = encodeURICom(key)
-				else out = [encodeURICom(key), '=', encodeURICom(value[i])].join('')
+				arr.push(encoderForArrayFormat(key, value[i], arr.length))
+
 				arr.push(out)
 			}
 			param = arr.join('&')
@@ -266,9 +266,13 @@ function querify(obj) {
 	return out.join('&')
 }
 
+function encoderForArrayFormat(key, value) {
+	if (value === null) return encodeURICom(key)
+	return [encodeURICom(key), '=', encodeURICom(value)].join('')
+}
+
 var ajax = newRequest()
 var env = {
-	XMLHttpRequest: {},
 	Jsonify: JSON.stringify,
 	ParseJson: JSON.parse,
 }
