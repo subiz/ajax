@@ -32,87 +32,87 @@ function newRequest() {
 		meta: {},
 	}
 
-	r.clone = function() {
+	r.clone = function () {
 		return Object.assign({}, this, {
 			query: Object.assign({}, this.query),
 			meta: Object.assign({}, this.meta),
 		})
 	}
 
-	r.addQuery = function(key, val) {
+	r.addQuery = function (key, val) {
 		var req = this.clone()
 		req.query[key] = val
 		return req
 	}
 
-	r.removeQuery = function(key) {
+	r.removeQuery = function (key) {
 		var req = this.clone()
 		if (req.query[key] !== undefined) req.query[key] = undefined
 		return req
 	}
 
-	r.withCredentials = function(credential) {
+	r.withCredentials = function (credential) {
 		return merge(this, {_withCredentials: credential})
 	}
 
-	r.setQuery = function(query) {
+	r.setQuery = function (query) {
 		return merge(this, {query: query})
 	}
 
-	r.clearHooks = function() {
+	r.clearHooks = function () {
 		return merge(this, {beforehooks: [], afterhooks: []})
 	}
 
-	r.beforeHook = function(cb) {
+	r.beforeHook = function (cb) {
 		var beforehooks = this.beforehooks.slice()
 		beforehooks.push(cb)
 		return merge(this, {beforehooks: beforehooks})
 	}
 
-	r.afterHook = function(cb) {
+	r.afterHook = function (cb) {
 		var afterhooks = this.afterhooks.slice()
 		afterhooks.push(cb)
 		return merge(this, {afterhooks: afterhooks})
 	}
 
-	r.setHeader = function(headers) {
+	r.setHeader = function (headers) {
 		headers = Object.assign({}, this.headers, headers)
 		headers[CONTENT_TYPE] = undefined
 		return merge(this, {headers: headers})
 	}
 
-	METHODS.map(function(method) {
-		r[method] = function(url, data, cb) {
+	METHODS.map(function (method) {
+		r[method] = function (url, data, cb) {
 			return send(merge(this, {method: method, baseurl: combineUrl(this.baseurl, url)}), data, cb)
 		}
 	})
 
 	// pass // to clean
-	r.setBaseUrl = function(url) {
+	r.setBaseUrl = function (url) {
 		return merge(this, {baseurl: url})
 	}
 
-	r.contentTypeJson = function() {
+	r.contentTypeJson = function () {
 		return merge(this, {content_type: CONTENT_TYPE_JSON})
 	}
 
-	r.contentTypeForm = function() {
+	r.contentTypeForm = function () {
 		return merge(this, {content_type: CONTENT_TYPE_FORM})
 	}
 
-	r.setContentType = function(ty) {
+	r.setContentType = function (ty) {
 		return merge(this, {content_type: norm(ty)})
 	}
 
-	r.setParser = function(parser) {
+	r.setParser = function (parser) {
 		return merge(this, {parser: norm(parser)})
 	}
 
-	r.setBody = function(body) {
+	r.setBody = function (body) {
 		return merge(this, {body: body})
 	}
 
-	r.setMeta = function(k, v) {
+	r.setMeta = function (k, v) {
 		var req = this.clone()
 		req.meta[k] = v
 		return req
@@ -121,16 +121,36 @@ function newRequest() {
 	return r
 }
 
+var networkerr = {
+	code: 'network_error,retry',
+	number: 'SBZ-EQNETWORK',
+	message: {En_US: 'Can not connect to server', Vi_VN: 'Không thể kết nối tới máy chủ'},
+}
+
+var invalidboryerr = {
+	code: 'invalid_response,retry',
+	number: 'SBZ-EQRESPONSE',
+	message: {En_US: 'Server error, please try again later', Vi_VN: 'Lỗi máy chủ, vui lòng thử lại sau'},
+}
+var not200err = {
+	code: 'not_200,retry',
+	number: 'SBZ-EQCN200',
+	message: {
+		En_US: 'Error connecting to the server, please try again later',
+		Vi_VN: 'Lỗi kết nối với máy chủ, vui lòng thử lại sau',
+	},
+}
+
 function send(req, data, cb) {
-	cb = cb || function() {}
+	cb = cb || function () {}
 	if (isFunc(data)) {
 		cb = data
 		data = undefined
 	}
 
 	var rs
-	var promise = new Promise(function(resolve) {
-		rs = function(res) {
+	var promise = new Promise(function (resolve) {
+		rs = function (res) {
 			try {
 				cb(res.error, res.body, res.code)
 			} catch (_) {}
@@ -147,21 +167,30 @@ function send(req, data, cb) {
 		}
 	}
 
-	waterfall(req.beforehooks.slice(), {request: req}, function(bp) {
+	waterfall(req.beforehooks.slice(), {request: req}, function (bp) {
 		if (bp.error) return rs({body: undefined, code: 0, error: bp.error})
-		dosend(bp.request, function(err, body, code) {
-			waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function(param) {
+		dosend(bp.request, function (err, body, code) {
+			waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function (param) {
 				var body = param.body
+
+				if (err == 'network_error') {
+					rs({body: body, code: param.code, error: networkerr})
+					return
+				}
 
 				if (req.parser == 'json' && param.body) {
 					try {
 						body = env.ParseJson(param.body)
 					} catch (e) {
-						param.err = param.err || 'invalid json'
+						rs({body: body, code: param.code, error: invalidbodyerr})
+						return
 					}
 				}
 				var err = param.err
-				if (code < 200 || code > 299) err = 'not 200'
+				if (!err && (code < 200 || code > 299)) {
+					if (body && body.error) err = body.error
+					else err = not200err
+				}
 				rs({body: body, code: param.code, error: err})
 			})
 		})
@@ -169,7 +198,7 @@ function send(req, data, cb) {
 	return promise
 }
 
-var dofetch = function(req, cb, q) {
+var dofetch = function (req, cb, q) {
 	var headers = Object.assign({}, req.headers)
 	if (req.content_type) {
 		headers[CONTENT_TYPE] = req.content_type
@@ -185,12 +214,12 @@ var dofetch = function(req, cb, q) {
 		.catch((err) => cb('network_error', err, -1))
 }
 
-var dosend = function(req, cb) {
+var dosend = function (req, cb) {
 	let q = querify(req.query)
 	if (q) q = '?' + q
 	if (!env.XMLHttpRequest) return dofetch(req, cb, q)
 	var request = new env.XMLHttpRequest()
-	request.onreadystatechange = function(e) {
+	request.onreadystatechange = function (e) {
 		if (request.readyState !== 4) return
 		if (request.status === 0) {
 			cb('network_error', request.responseText, request.status) // network error
@@ -221,7 +250,7 @@ function waterfall(ps, param, cb) {
 
 	var fp = ps.shift()
 	if (!isFunc(fp)) return waterfall(ps, param, cb)
-	fp(param, function(out) {
+	fp(param, function (out) {
 		return out === false ? cb(param) : waterfall(ps, param, cb)
 	})
 }
@@ -231,7 +260,7 @@ function waterfall(ps, param, cb) {
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
 // for more details
 function encodeURICom(str) {
-	return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
+	return encodeURIComponent(str).replace(/[!'()*]/g, function (c) {
 		return '%' + c.charCodeAt(0).toString(16)
 	})
 }
