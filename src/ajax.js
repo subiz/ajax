@@ -127,11 +127,12 @@ var networkerr = {
 	message: {En_US: 'Can not connect to server', Vi_VN: 'Không thể kết nối tới máy chủ'},
 }
 
-var invalidboryerr = {
+var invalidbodyerr = {
 	code: 'invalid_response,retry',
 	number: 'SBZ-EQRESPONSE',
 	message: {En_US: 'Server error, please try again later', Vi_VN: 'Lỗi máy chủ, vui lòng thử lại sau'},
 }
+
 var not200err = {
 	code: 'not_200,retry',
 	number: 'SBZ-EQCN200',
