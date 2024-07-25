@@ -169,30 +169,25 @@ function send(req, data, cb) {
 	}
 
 	waterfall(req.beforehooks.slice(), {request: req}, function (bp) {
-		if (bp.error) return rs({body: undefined, code: 0, error: bp.error})
+		if (bp.error) return rs({body: undefined || {error: bq.error}, code: 0, error: bp.error})
 		dosend(bp.request, function (err, body, code) {
 			waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function (param) {
 				var body = param.body
 
-				if (err == 'network_error') {
-					rs({body: body, code: param.code, error: networkerr})
-					return
-				}
+				if (err == 'network_error') return rs({body: body || {error: networkerr}, code: param.code, error: networkerr})
 
 				if (req.parser == 'json' && param.body) {
 					try {
 						body = env.ParseJson(param.body)
 					} catch (e) {
-						rs({body: body, code: param.code, error: invalidbodyerr})
-						return
+						return rs({body: body || {error: invalidbodyerr}, code: param.code, error: invalidbodyerr})
 					}
 				}
 				var err = param.err
 				if (!err && (code < 200 || code > 299)) {
-					if (body && body.error) err = body.error
-					else err = not200err
+					err = body && body.error ? body.error : not200err
 				}
-				rs({body: body, code: param.code, error: err})
+				rs({body: body || {error: err}, code: param.code, error: err})
 			})
 		})
 	})
