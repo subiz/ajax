@@ -29,14 +29,10 @@ function newRequest() {
 		afterhooks: [],
 		baseurl: '',
 		query: {},
-		meta: {},
 	}
 
 	r.clone = function () {
-		return Object.assign({}, this, {
-			query: Object.assign({}, this.query),
-			meta: Object.assign({}, this.meta),
-		})
+		return Object.assign({}, this, {query: Object.assign({}, this.query)})
 	}
 
 	r.addQuery = function (key, val) {
@@ -111,13 +107,6 @@ function newRequest() {
 	r.setBody = function (body) {
 		return merge(this, {body: body})
 	}
-
-	r.setMeta = function (k, v) {
-		var req = this.clone()
-		req.meta[k] = v
-		return req
-	}
-
 	return r
 }
 
@@ -169,25 +158,22 @@ function send(req, data, cb) {
 	}
 
 	waterfall(req.beforehooks.slice(), {request: req}, function (bp) {
-		if (bp.error) return rs({body: undefined || {error: bq.error}, code: 0, error: bp.error})
+		if (bp.error) return rs({body: {error: bq.error}, code: 0, error: bp.error})
 		dosend(bp.request, function (err, body, code) {
 			waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function (param) {
 				var body = param.body
 
-				if (err == 'network_error') return rs({body: body || {error: networkerr}, code: param.code, error: networkerr})
-
+				if (err == 'network_error') return rs({body: {error: networkerr}, code: param.code, error: networkerr})
 				if (req.parser == 'json' && param.body) {
 					try {
 						body = env.ParseJson(param.body)
 					} catch (e) {
-						return rs({body: body || {error: invalidbodyerr}, code: param.code, error: invalidbodyerr})
+						return rs({body: {error: invalidbodyerr, origin_body: param.body}, code: param.code, error: invalidbodyerr})
 					}
 				}
 				var err = param.err
-				if (!err && (code < 200 || code > 299)) {
-					err = body && body.error ? body.error : not200err
-				}
-				rs({body: body || {error: err}, code: param.code, error: err})
+				if (!err && (code < 200 || code > 299)) err = body && body.error ? body.error : not200err
+				rs({body: err ? body || {error: err} : body, code: param.code, error: err})
 			})
 		})
 	})
