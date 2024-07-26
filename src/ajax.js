@@ -182,9 +182,7 @@ function send(req, data, cb) {
 
 var dofetch = function (req, cb, q) {
 	var headers = Object.assign({}, req.headers)
-	if (req.content_type) {
-		headers[CONTENT_TYPE] = req.content_type
-	}
+	if (req.content_type) headers[CONTENT_TYPE] = req.content_type
 
 	fetch(req.baseurl + q, {
 		method: req.method,
@@ -192,8 +190,15 @@ var dofetch = function (req, cb, q) {
 		credentials: req._withCredentials,
 		body: req.body,
 	})
-		.then((res) => res.text().then((text) => cb(undefined, text, res.status)))
-		.catch((err) => cb('network_error', err, -1))
+		.then(function (res) {
+			return res.text()
+		})
+		.then(function (text) {
+			cb(undefined, text, res.status)
+		})
+		.catch(function (err) {
+			cb('network_error', err, -1)
+		})
 }
 
 var dosend = function (req, cb) {
