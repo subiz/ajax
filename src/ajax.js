@@ -113,7 +113,10 @@ function newRequest() {
 var networkerr = {
 	code: 'network_error,retry',
 	number: 'SBZ-EQNETWORK',
-	message: {En_US: 'Can not connect to server', Vi_VN: 'Không thể kết nối tới máy chủ'},
+	message: {
+		En_US: 'Can not connect to the server. Please check your internet connection.',
+		Vi_VN: 'Không thể kết nối tới máy chủ. Vui lòng kiểm tra lại kết nối mạng.',
+	},
 }
 
 var invalidbodyerr = {
@@ -126,7 +129,7 @@ var not200err = {
 	code: 'not_200,retry',
 	number: 'SBZ-EQCN200',
 	message: {
-		En_US: 'Error connecting to the server, please try again later',
+		En_US: 'Error while connecting to the server, please try again later',
 		Vi_VN: 'Lỗi kết nối với máy chủ, vui lòng thử lại sau',
 	},
 }
@@ -162,7 +165,6 @@ function send(req, data, cb) {
 		dosend(bp.request, function (err, body, code) {
 			waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function (param) {
 				var body = param.body
-
 				if (err == 'network_error') return rs({body: {error: networkerr}, code: param.code, error: networkerr})
 				if (req.parser == 'json' && param.body) {
 					try {
@@ -172,6 +174,7 @@ function send(req, data, cb) {
 					}
 				}
 				var err = param.err
+				if (err == 'network_error') return rs({body: {error: networkerr}, code: param.code, error: networkerr})
 				if (!err && (code < 200 || code > 299)) err = body && body.error ? body.error : not200err
 				rs({body: err ? body || {error: err} : body, code: param.code, error: err})
 			})
