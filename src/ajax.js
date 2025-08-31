@@ -209,6 +209,7 @@ var dosend = function (req, cb) {
 	if (q) q = '?' + q
 	if (!env.XMLHttpRequest) return dofetch(req, cb, q)
 	var request = new env.XMLHttpRequest()
+	req.xhr = request // expose through xhr, the caller can use this to get header
 	request.onreadystatechange = function (e) {
 		if (request.readyState !== 4) return
 		if (request.status === 0) {
