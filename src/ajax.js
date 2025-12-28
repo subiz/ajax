@@ -170,7 +170,11 @@ function send(req, data, cb) {
 					try {
 						body = env.ParseJson(param.body)
 					} catch (e) {
-						return rs({body: {error: invalidbodyerr, origin_body: param.body}, code: param.code, error: invalidbodyerr})
+						return rs({
+							body: {error: invalidbodyerr, origin_body: param.body},
+							code: param.code,
+							error: invalidbodyerr,
+						})
 					}
 				}
 				var err = param.err
@@ -187,6 +191,7 @@ var dofetch = function (req, cb, q) {
 	var headers = Object.assign({}, req.headers)
 	if (req.content_type) headers[CONTENT_TYPE] = req.content_type
 
+	var status = 0
 	fetch(req.baseurl + q, {
 		method: req.method,
 		headers: headers,
@@ -194,10 +199,11 @@ var dofetch = function (req, cb, q) {
 		body: req.body,
 	})
 		.then(function (res) {
+			status = res.status
 			return res.text()
 		})
 		.then(function (text) {
-			cb(undefined, text, res.status)
+			cb(undefined, text, status)
 		})
 		.catch(function (err) {
 			cb('network_error', err, -1)
