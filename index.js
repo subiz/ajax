@@ -1,5 +1,6 @@
 'use strict'
 var ajax = require('./src/ajax.js')
-ajax.env.XMLHttpRequest = window.XMLHttpRequest
-ajax.env.window = window
+if (typeof window !== 'undefined') {
+	ajax.env.XMLHttpRequest = window.XMLHttpRequest
+}
 module.exports = ajax

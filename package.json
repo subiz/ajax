@@ -1,6 +1,6 @@
 {
 	"name": "@subiz/ajax",
-	"version": "3.0.21",
+	"version": "3.0.22",
 	"description": "",
 	"main": "./dist/ajax.js",
 	"scripts": {
