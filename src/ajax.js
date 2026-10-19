@@ -29,6 +29,7 @@ function newRequest() {
 		afterhooks: [],
 		baseurl: '',
 		query: {},
+		meta: {},
 	}
 
 	r.clone = function () {
@@ -39,6 +40,12 @@ function newRequest() {
 		var req = this.clone()
 		req.query[key] = val
 		return req
+	}
+
+	r.setMeta = function (key, val) {
+		var meta = Object.assign({}, this.meta)
+		meta[key] = val
+		return merge(this, {meta: meta})
 	}
 
 	r.removeQuery = function (key) {
@@ -73,7 +80,9 @@ function newRequest() {
 
 	r.setHeader = function (headers) {
 		headers = Object.assign({}, this.headers, headers)
-		headers[CONTENT_TYPE] = undefined
+		for (var key in headers) {
+			if (key.toLowerCase() === 'content-type') delete headers[key]
+		}
 		return merge(this, {headers: headers})
 	}
 
@@ -161,7 +170,7 @@ function send(req, data, cb) {
 	}
 
 	waterfall(req.beforehooks.slice(), {request: req}, function (bp) {
-		if (bp.error) return rs({body: {error: bq.error}, code: 0, error: bp.error})
+		if (bp.error) return rs({body: {error: bp.error}, code: 0, error: bp.error})
 		dosend(bp.request, function (err, body, code) {
 			waterfall(req.afterhooks.slice(), {request: req, code: code, body: body, err: err}, function (param) {
 				var body = param.body
@@ -179,7 +188,7 @@ function send(req, data, cb) {
 				}
 				var err = param.err
 				if (err == 'network_error') return rs({body: {error: networkerr}, code: param.code, error: networkerr})
-				if (!err && (code < 200 || code > 299)) err = body && body.error ? body.error : not200err
+				if (!err && (param.code < 200 || param.code > 299)) err = body && body.error ? body.error : not200err
 				rs({body: err ? body || {error: err} : body, code: param.code, error: err})
 			})
 		})
@@ -187,9 +196,19 @@ function send(req, data, cb) {
 	return promise
 }
 
-var dofetch = function (req, cb, q) {
-	var headers = Object.assign({}, req.headers)
+function requestHeaders(req) {
+	var headers = {}
+	for (var key in req.headers) {
+		if (req.headers[key] === undefined) continue
+		if (req.content_type && key.toLowerCase() === 'content-type') continue
+		headers[key] = req.headers[key]
+	}
 	if (req.content_type) headers[CONTENT_TYPE] = req.content_type
+	return headers
+}
+
+var dofetch = function (req, cb, q) {
+	var headers = requestHeaders(req)
 
 	var status = 0
 	fetch(req.baseurl + q, {
@@ -227,10 +246,8 @@ var dosend = function (req, cb) {
 
 	request.open(req.method, req.baseurl + q)
 	request.withCredentials = req._withCredentials // for cloudflare to work correctly
-	for (var i in req.headers) request.setRequestHeader(i, req.headers[i])
-	if (req.content_type) {
-		request.setRequestHeader(CONTENT_TYPE, req.content_type)
-	}
+	var headers = requestHeaders(req)
+	for (var i in headers) request.setRequestHeader(i, headers[i])
 	request.send(req.body)
 }
 
@@ -281,9 +298,7 @@ function querify(obj) {
 			var arr = []
 			for (var i = 0; i < value.length; i++) {
 				if (value[i] === undefined) continue
-				arr.push(encoderForArrayFormat(key, value[i], arr.length))
-
-				arr.push(out)
+				arr.push(encoderForArrayFormat(key, value[i]))
 			}
 			param = arr.join('&')
 		}
